@@ -1,5 +1,5 @@
 from typing import Union
-from fastapi import FastAPI, APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic  import BaseModel, Field, field_validator
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
@@ -10,7 +10,6 @@ router = APIRouter(
     prefix="/users",
     tags=["users"]
 )
-
 
 class User(BaseModel):
     id:  str = Field(default_factory=lambda: str(uuid.uuid4()))
