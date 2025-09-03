@@ -36,15 +36,15 @@ class User(BaseModel):
     lastName: str   | None
     address: str    | None
 
-@router.get("/")
-def read_root(current_user: str = Depends(dependencies.get_current_user)):
-    #it works, but I reckon this is not the best approach...
-    if current_user["config"]["type"] == "sysAdmin":
-        return {"user": "user"}
-    else:
-        raise HTTPException(status_code=401,
-                        detail="Only admins can use this route",
-                        headers={"WWW-Authenticate": "Bearer"})
+@router.get("/", dependencies=[Depends(dependencies.check_admin_role)])
+def read_root():
+    return dependencies.fake_users_db
+
+@router.get("/{userName}", dependencies=[Depends(dependencies.check_admin_role)])
+def read_root(userName: str):
+    if(dependencies.fake_users_db.get(userName) == None):
+        raise HTTPException(status_code=404, detail="User not found")
+    return dependencies.fake_users_db.get(userName)
 
 @router.post("/register")
 async def create_item(user: User):

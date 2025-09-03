@@ -57,31 +57,72 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     #print(token)
     return token
 
+def check_admin_role(current_user = Depends(get_current_user)):
+    if current_user["config"]["type"] != "sysAdmin":
+        raise HTTPException(status_code=401, detail="Only admins")
+    return current_user
+
 fake_users_db = {
-    "john_doe": {
-        "id": "user123",
-        "userName": "john_doe",
-        "password": "Secure123!",
-        "type": "customer",
-        "birthDate": "1990-06-15T00:00:00",
-        "emailAddress": "john.doe@example.com",
-        "phoneNumber": "+1-123-456-7890",
-        "firstName": "John",
-        "lastName": "Doe",
-        "address": "123 Main St, Springfield, IL 62704"
-    },
-    "maria_doe": {
-        "id": "user123",
-        "userName": "maria_doe",
-        "password": "Secure123!",
-        "type": "sysAdmin",
-        "birthDate": "1990-06-15T00:00:00",
-        "emailAddress": "john.doe@example.com",
-        "phoneNumber": "+1-123-456-7890",
-        "firstName": "John",
-        "lastName": "Doe",
-        "address": "123 Main St, Springfield, IL 62704"
-    }
+  "john_doe": {
+    "id": "user001",
+    "userName": "john_doe",
+    "password": "Secure123!",
+    "type": "customer",
+    "birthDate": "1990-06-15T00:00:00",
+    "emailAddress": "john.doe@example.com",
+    "phoneNumber": "+1-123-456-7890",
+    "firstName": "John",
+    "lastName": "Doe",
+    "address": "123 Main St, Springfield, IL 62704"
+  },
+  "maria_lee": {
+    "id": "user002",
+    "userName": "maria_lee",
+    "password": "Admin!234",
+    "type": "sysAdmin",
+    "birthDate": "1985-09-10T00:00:00",
+    "emailAddress": "maria.lee@example.com",
+    "phoneNumber": "+1-234-567-8901",
+    "firstName": "Maria",
+    "lastName": "Lee",
+    "address": "456 Oak Ave, Chicago, IL 60616"
+  },
+  "james_wong": {
+    "id": "user003",
+    "userName": "james_wong",
+    "password": "Manager#456",
+    "type": "customer",
+    "birthDate": "1988-03-22T00:00:00",
+    "emailAddress": "james.wong@example.com",
+    "phoneNumber": "+1-345-678-9012",
+    "firstName": "James",
+    "lastName": "Wong",
+    "address": "789 Pine St, Seattle, WA 98101"
+  },
+  "emily_nguyen": {
+    "id": "user004",
+    "userName": "emily_nguyen",
+    "password": "Employee789@",
+    "type": "customer",
+    "birthDate": "1992-11-05T00:00:00",
+    "emailAddress": "emily.nguyen@example.com",
+    "phoneNumber": "+1-456-789-0123",
+    "firstName": "Emily",
+    "lastName": "Nguyen",
+    "address": "321 Birch Rd, Austin, TX 73301"
+  },
+  "oliver_smith": {
+    "id": "user005",
+    "userName": "oliver_smith",
+    "password": "Guest$321",
+    "type": "customer",
+    "birthDate": "1995-07-30T00:00:00",
+    "emailAddress": "oliver.smith@example.com",
+    "phoneNumber": "+1-567-890-1234",
+    "firstName": "Oliver",
+    "lastName": "Smith",
+    "address": "654 Cedar Ln, Denver, CO 80202"
+  }
 }
 
 def authenticate_user(username: str, password: str):
