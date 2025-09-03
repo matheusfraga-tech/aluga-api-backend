@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
-from typing import Annotated
-
+from dotenv import load_dotenv
+import os
 import jwt
 from jwt import PyJWTError
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -8,12 +8,12 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 #from passlib.context import CryptContext
 from pydantic import BaseModel
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/login')
 
-SECRET_KEY = "d7b9c04692e2b77c637e7e4a1eee827f04dea43cbf1d081fef041853faaa2a05"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 5
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 # should be in schemas/
 class Token(BaseModel):
