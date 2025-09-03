@@ -1,0 +1,3 @@
+fastapi[standard]
+python-dateutil
+PyJWT
