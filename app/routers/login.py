@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
 from .. import dependencies
 
@@ -17,6 +17,9 @@ def performLogin(login: Login):
   if not user:
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                         detail="Invalid username or password")
-  access_token = dependencies.create_access_token(data={"user_id": user["id"]})
-  return {"access_token": access_token, "token_type": "bearer"}
-  return (login)
+  access_token = dependencies.create_access_token(data={"config": user})
+  return dependencies.Token(access_token=access_token, token_type="bearer")
+
+@router.get("/protected")
+def protected_route(current_user: str = Depends(dependencies.get_current_user)):
+    return current_user
