@@ -17,4 +17,9 @@ def startup_event():
 async def root():
     return {"message": "Hello Bigger Applications!"}
 
-
+@app.get("/hotel")
+def getHotel():
+    return {
+        "name": "Copacabana Palace",
+        "address": "Av. Atlântica, 1702, Copacabana, Rio de Janeiro"
+    }
