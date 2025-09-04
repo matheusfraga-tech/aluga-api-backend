@@ -1,19 +1,20 @@
 from fastapi import Depends, FastAPI
-
 from .dependencies import *
-from .routers import users
+from .routers import users, login
+from .database.test_connection import test_connection
 
 app = FastAPI()
 
+# inclui routers
 app.include_router(users.router)
-# app.include_router(
-#     admin.router,
-#     prefix="/admin",
-#     tags=["admin"],
-#     dependencies=[Depends(get_token_header)],
-#     responses={418: {"description": "I'm a teapot"}},
-# )
+app.include_router(login.router)
+@app.on_event("startup")
+def startup_event():
+    # testa a conexão com o banco quando a API inicia
+    test_connection()
 
 @app.get("/")
 async def root():
     return {"message": "Hello Bigger Applications!"}
+
+
