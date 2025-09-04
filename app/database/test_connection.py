@@ -6,11 +6,11 @@ load_dotenv()
 
 USER_DB = os.getenv("USER_DB")
 USER_PASSWORD = os.getenv("USER_PASSWORD")
-HOST = os.getenv("HOST")
-PORT = os.getenv("PORT")
+HOST = os.getenv("HOST_DB")
+PORT = os.getenv("PORT_DB")
 DB_NAME = os.getenv("DB_NAME", "aluga-api-v3-database")
 
-DATABASE_URL = f"postgresql+psycopg2://{USER_DB}:{USER_PASSWORD}@{HOST}:{PORT}/{DB_NAME}?sslmode=require"
+DATABASE_URL = f"postgresql+psycopg2://{USER_DB}:{USER_PASSWORD}@{HOST_DB}:{PORT_DB}/{DB_NAME}?sslmode=require"
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 def test_connection():
