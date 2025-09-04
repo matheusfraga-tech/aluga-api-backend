@@ -23,3 +23,13 @@ def getHotel():
         "name": "Copacabana Palace",
         "address": "Av. Atlântica, 1702, Copacabana, Rio de Janeiro"
     }
+
+@app.get("/test-db")
+def test_db():
+    try:
+        with engine.connect() as conn:
+            version = conn.execute(text("SELECT version();")).scalar()
+            return {"status": "ok", "postgres_version": version}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+        
