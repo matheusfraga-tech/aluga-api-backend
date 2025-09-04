@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Header
 from pydantic import BaseModel
 from .. import dependencies
+import jwt
+from jwt import PyJWTError, InvalidTokenError
 
 router = APIRouter(
     prefix="/login",
@@ -17,9 +19,22 @@ def performLogin(login: Login):
   if not user:
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                         detail="Invalid username or password")
-  access_token = dependencies.create_access_token(data={"config": user})
-  return dependencies.Token(access_token=access_token, token_type="bearer")
+  access_t = dependencies.create_access_token(data={"userName": user["userName"], "type": user["type"]})
+  refresh_t  = dependencies.create_refresh_token (data={"userName": user["userName"], "type": user["type"]})
+  return dependencies.Token(access_token=access_t, refresh_token=refresh_t, token_type="bearer")
 
-@router.get("/protected")
-def protected_route(current_user: str = Depends(dependencies.get_current_user)):
-    return current_user
+@router.post("/refresh")
+def refresh_token(refresh_token: str = Header(None, convert_underscores=False)):
+    try:
+      payload = jwt.decode(refresh_token, dependencies.SECRET_KEY, algorithms=[dependencies.ALGORITHM])
+      print("refresh", payload)
+      username: str = payload.get("username")
+      if username is None:
+          print("error")
+    except (PyJWTError, InvalidTokenError):
+      raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Unathorized access, please authenticate.")
+    access_t = dependencies.create_access_token(payload)
+    refresh_t = dependencies.create_refresh_token(payload)  # Token rotation (optional but recommended)
+    
+    return dependencies.Token(access_token=access_t, refresh_token=refresh_t, token_type="bearer")

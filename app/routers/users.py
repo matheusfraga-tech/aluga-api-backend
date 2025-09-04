@@ -15,11 +15,9 @@ def read_root():
     return dependencies.fake_users_db
 
 @router.get("/me")
-def get_current_user(current_user: str = Depends(dependencies.get_current_user)):
-    print("outer get_current_user")
-    print(current_user)
+def get_self(current_user: str = Depends(dependencies.get_current_user)):
     if current_user != None:
-        return current_user 
+        return current_user
     raise HTTPException(status_code=404, detail="User not found")
 #@router.put("/me")
 
