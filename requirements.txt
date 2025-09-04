@@ -3,3 +3,4 @@ python-dateutil
 PyJWT
 python-dotenv
 SQLAlchemy
+psycopg2-binary
