@@ -1,6 +1,6 @@
 from typing import Union
 from fastapi import APIRouter, Depends, HTTPException
-from .. import dependencies
+from ..helpers import auth_utils
 from ..schemas.user import User
 
 router = APIRouter(
@@ -10,22 +10,22 @@ router = APIRouter(
 
 ##  ROUTES
 
-@router.get("/", dependencies=[Depends(dependencies.check_admin_role)])
+@router.get("/", dependencies=[Depends(auth_utils.check_admin_role)])
 def read_root():
-    return dependencies.fake_users_db
+    return auth_utils.fake_users_db
 
 @router.get("/me")
-def get_self(current_user: str = Depends(dependencies.get_current_user)):
+def get_self(current_user: str = Depends(auth_utils.get_current_user)):
     if current_user != None:
         return current_user
     raise HTTPException(status_code=404, detail="User not found")
 #@router.put("/me")
 
-@router.get("/{userName}", dependencies=[Depends(dependencies.check_admin_role)])
+@router.get("/{userName}", dependencies=[Depends(auth_utils.check_admin_role)])
 def read_root(userName: str):
-    if(dependencies.fake_users_db.get(userName) == None):
+    if(auth_utils.fake_users_db.get(userName) == None):
         raise HTTPException(status_code=404, detail="User not found")
-    return dependencies.fake_users_db.get(userName)
+    return auth_utils.fake_users_db.get(userName)
 #@router.put("/{userName}")
 #@router.del("/{userName}")
 

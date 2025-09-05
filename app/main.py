@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from .dependencies import *
 from .routers import users, login
 # from .database.test_connection import test_connection, engine
 # from sqlalchemy import text

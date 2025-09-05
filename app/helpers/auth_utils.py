@@ -6,6 +6,7 @@ from jwt import PyJWTError
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
+from ..schemas.token import TokenData
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/login')
 
 load_dotenv()
@@ -14,8 +15,8 @@ ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 REFRESH_TOKEN_EXPIRE_MINUTES = int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES"))
 
-def create_access_token(data: dict):
-    to_encode = data.copy()
+def create_access_token(data: TokenData):
+    to_encode = data.model_dump()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})  # this will be properly interpreted by JWT
     print(to_encode["exp"])
@@ -44,7 +45,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
                                           headers={"WWW-Authenticate": "Bearer"})
 
     token = verify_token_access(token, credentials_exception)
-    return fake_users_db.get(token["userName"])
+    #must query db
+    return fake_users_db.get(token["id"])
 
 def check_admin_role(current_user = Depends(get_current_user)):
     print(current_user)
@@ -53,8 +55,8 @@ def check_admin_role(current_user = Depends(get_current_user)):
     return current_user
 
 
-def create_refresh_token(data: dict):
-    to_encode = data.copy()
+def create_refresh_token(data: TokenData):
+    to_encode = data.model_dump()
     print("create_refresh_token", to_encode)
     expire = datetime.now(timezone.utc) + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
@@ -63,7 +65,7 @@ def create_refresh_token(data: dict):
     return encoded_jwt
 
 fake_users_db = {
-  "john_doe": {
+  "b64c8392-50c1-4dbe-89c5-4a5ad3b6d06b": {
     "id": "b64c8392-50c1-4dbe-89c5-4a5ad3b6d06b",
     "userName": "john_doe",
     "password": "Secure123!",
@@ -75,7 +77,7 @@ fake_users_db = {
     "lastName": "Doe",
     "address": "123 Main St, Springfield, IL 62704"
   },
-  "maria_lee": {
+  "fa51299a-bb30-4e3d-9fc3-3f64728a6b64": {
     "id": "fa51299a-bb30-4e3d-9fc3-3f64728a6b64",
     "userName": "maria_lee",
     "password": "Admin!234",
@@ -87,7 +89,7 @@ fake_users_db = {
     "lastName": "Lee",
     "address": "456 Oak Ave, Chicago, IL 60616"
   },
-  "james_wong": {
+  "9d8032e0-7638-49a2-aab0-f02b8ebee107": {
     "id": "9d8032e0-7638-49a2-aab0-f02b8ebee107",
     "userName": "james_wong",
     "password": "Manager#456",
@@ -99,7 +101,7 @@ fake_users_db = {
     "lastName": "Wong",
     "address": "789 Pine St, Seattle, WA 98101"
   },
-  "emily_nguyen": {
+  "0f2bbbe3-236d-4d83-a502-12a4ad1d219d": {
     "id": "0f2bbbe3-236d-4d83-a502-12a4ad1d219d",
     "userName": "emily_nguyen",
     "password": "Employee789@",
@@ -111,7 +113,7 @@ fake_users_db = {
     "lastName": "Nguyen",
     "address": "321 Birch Rd, Austin, TX 73301"
   },
-  "oliver_smith": {
+  "63d7c168-77cc-4a92-8328-5cf76b79c981": {
     "id": "63d7c168-77cc-4a92-8328-5cf76b79c981",
     "userName": "oliver_smith",
     "password": "Guest$321",
@@ -125,10 +127,13 @@ fake_users_db = {
   }
 }
 
+
 def authenticate_user(username: str, password: str):
-    user = fake_users_db.get(username)
-    if not user:
-        return False
-    if user["password"] != password:
-        return False
-    return user
+  # no iteration needed on a real db so its an O(1) statement
+  # passwords are still to be hashed
+  for user in fake_users_db.values():
+      if user["userName"] == username:
+          if user["password"] == password:
+              return user
+          return False
+  return False
