@@ -12,7 +12,7 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
-REFRESH_TOKEN_EXPIRE_MINUTES = int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES", 7))
+REFRESH_TOKEN_EXPIRE_MINUTES = int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES"))
 
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -64,7 +64,7 @@ def create_refresh_token(data: dict):
 
 fake_users_db = {
   "john_doe": {
-    "id": "user001",
+    "id": "b64c8392-50c1-4dbe-89c5-4a5ad3b6d06b",
     "userName": "john_doe",
     "password": "Secure123!",
     "role": "customer",
@@ -76,7 +76,7 @@ fake_users_db = {
     "address": "123 Main St, Springfield, IL 62704"
   },
   "maria_lee": {
-    "id": "user002",
+    "id": "fa51299a-bb30-4e3d-9fc3-3f64728a6b64",
     "userName": "maria_lee",
     "password": "Admin!234",
     "role": "sysAdmin",
@@ -88,7 +88,7 @@ fake_users_db = {
     "address": "456 Oak Ave, Chicago, IL 60616"
   },
   "james_wong": {
-    "id": "user003",
+    "id": "9d8032e0-7638-49a2-aab0-f02b8ebee107",
     "userName": "james_wong",
     "password": "Manager#456",
     "role": "customer",
@@ -100,7 +100,7 @@ fake_users_db = {
     "address": "789 Pine St, Seattle, WA 98101"
   },
   "emily_nguyen": {
-    "id": "user004",
+    "id": "0f2bbbe3-236d-4d83-a502-12a4ad1d219d",
     "userName": "emily_nguyen",
     "password": "Employee789@",
     "role": "customer",
@@ -112,7 +112,7 @@ fake_users_db = {
     "address": "321 Birch Rd, Austin, TX 73301"
   },
   "oliver_smith": {
-    "id": "user005",
+    "id": "63d7c168-77cc-4a92-8328-5cf76b79c981",
     "userName": "oliver_smith",
     "password": "Guest$321",
     "role": "customer",
