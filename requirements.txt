@@ -1,6 +1,7 @@
-fastapi[standard]
-python-dateutil
-PyJWT
-python-dotenv
-SQLAlchemy
-psycopg2-binary
+fastapi[standard]       # FastAPI e extras úteis (pydantic, docs, etc.)
+python-dateutil         # Manipulação de datas (para datetime, relativedelta, etc.)
+PyJWT                   # JWT para autenticação e geração de tokens
+python-dotenv           # Carrega variáveis de ambiente do arquivo .env
+SQLAlchemy              # ORM para banco de dados
+psycopg2-binary         # Driver PostgreSQL para SQLAlchemy
+passlib[bcrypt]         # Hash de senhas (bcrypt)
