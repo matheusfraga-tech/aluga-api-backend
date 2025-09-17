@@ -10,7 +10,7 @@ HOST_DB = os.getenv("HOST_DB")
 PORT_DB = os.getenv("PORT_DB", "5432")
 DB_NAME = os.getenv("DB_NAME", "aluga-api-v3-database")
 
-DATABASE_URL = f"postgresql+psycopg2://{USER_DB}:{USER_PASSWORD}@{HOST_DB}:{PORT_DB}/{DB_NAME}?sslmode=require"
+DATABASE_URL = f"postgresql+psycopg2://{USER_DB}:{USER_PASSWORD}@{HOST_DB}:{PORT_DB}/{DB_NAME}?sslmode=disable"
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 def test_connection():
@@ -22,4 +22,3 @@ def test_connection():
     except Exception as e:
         print("Erro ao conectar no banco:", e)
         raise
-

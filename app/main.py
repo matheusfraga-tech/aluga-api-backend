@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from .dependencies import *
-from .routers import users, login
+from .routers import users, login, avaliacoes
 from .database.test_connection import test_connection, engine
 from sqlalchemy import text
 
@@ -9,6 +9,7 @@ app = FastAPI()
 # inclui routers
 app.include_router(users.router)
 app.include_router(login.router)
+app.include_router(avaliacoes.router)
 
 @app.on_event("startup")
 def startup_event():
