@@ -8,7 +8,7 @@ class User(BaseModel):
     id:  str = Field(default_factory=lambda: str(uuid.uuid4()))
     userName: str = Field(min_length=3, max_length=15) # validade unique
     password: str = Field(pattern=re.compile(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$")) 
-        #8 chars, at least 1 uppercased, at least 1 number, 1 special char
+        #8 chars, at least 1 uppercase, at least 1 number, 1 special char
     role: str
     birthDate: datetime
     @field_validator('birthDate')

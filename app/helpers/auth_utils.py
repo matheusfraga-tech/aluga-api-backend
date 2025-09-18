@@ -6,6 +6,7 @@ from jwt import PyJWTError
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
+from ..schemas.user import User
 from ..schemas.token import TokenData
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/login')
 
@@ -27,7 +28,7 @@ def verify_token_access(token: str, credentials_exception):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         #print("ASDSADSADASD")
-        print(payload)
+        #print(payload)
         #user_id: str = payload.get("user_id")
         # if user_id is None:
         #     raise credentials_exception
@@ -39,20 +40,20 @@ def verify_token_access(token: str, credentials_exception):
         raise credentials_exception
     return token_data
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(status_code= 401,
                                           detail="Could not Validate Credentials",
                                           headers={"WWW-Authenticate": "Bearer"})
 
     token = verify_token_access(token, credentials_exception)
     #must query db
-    return fake_users_db.get(token["id"])
+    return User(**fake_users_db.get(token["id"]))
 
 def check_admin_role(current_user = Depends(get_current_user)):
     print(current_user)
-    if current_user["role"] != "sysAdmin":
+    if current_user.role != "sysAdmin":
         raise HTTPException(status_code=401, detail="Only admins")
-    return current_user
+    return current_user 
 
 
 def create_refresh_token(data: TokenData):

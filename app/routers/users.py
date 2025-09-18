@@ -1,7 +1,9 @@
 from typing import Union
 from fastapi import APIRouter, Depends, HTTPException
 from ..helpers import auth_utils
+from ..helpers import users_utils
 from ..schemas.user import User
+from ..logic.users import routing as user_routing_logic
 import json
 
 router = APIRouter(
@@ -23,12 +25,17 @@ def get_self(current_user: str = Depends(auth_utils.get_current_user)):
 
 @router.put("/me")
 async def update_user(payload: dict, current_user: User = Depends(auth_utils.get_current_user)):
-    print("current_user", current_user)
-    print("payload", payload)
     if current_user == None:
         raise HTTPException(status_code=404, detail="User not found")
+    user_routing_logic.handleUpdateConstraints(current_user, current_user, payload)
     
-    return await update_user(current_user["userName"], payload)
+    updatedUser: json = users_utils.handleUserInstanceUpdates(payload, current_user)    
+    
+    newUserDict = {}
+    key = (current_user.id)
+    newUserDict[key] = updatedUser
+    auth_utils.fake_users_db.update(newUserDict)
+    return updatedUser
 
 @router.get("/{userName}", dependencies=[Depends(auth_utils.check_admin_role)])
 def read_root(userName: str):
@@ -37,27 +44,15 @@ def read_root(userName: str):
     return auth_utils.fake_users_db.get(userName)
 
 @router.put("/{userName}")
-async def update_user(userName: str, payload: dict):
-##apply strategy based on user role e.g.: admins can change all fields, customers only emailAddress, phoneNumber, phoneNumber
+async def update_user(userName: str, payload: dict, current_user: User = Depends(auth_utils.get_current_user)):
+##apply strategy based on user role e.g.: admins can change all fields, customers only emailAddress, phoneNumber, address
 #find user
-    fetchedUser: User = None
-    for dbUser in auth_utils.fake_users_db.values():
-            # print(dbUser["userName"])
-            if dbUser["userName"] == userName:
-                fetchedUser = User(**dbUser)
-                break
-#update user
-    updatedUser = json.loads(fetchedUser.model_dump_json())
-    # print(updatedUser)
-    for toUpdateField in payload.keys():
-        # print(toUpdateField, payload[toUpdateField], dbUser[toUpdateField])
-        if(payload[toUpdateField] == dbUser[toUpdateField]):
-            continue
-        else: 
-            print("field: ", toUpdateField, " from: ", updatedUser[toUpdateField]," to: ", payload[toUpdateField])
-            updatedUser[toUpdateField] = payload[toUpdateField]
-    # print("to update:", updatedUser)
-    
+    fetchedUser: User = users_utils.queryUserByUsername(userName)
+#apply strategy
+    user_routing_logic.handleUpdateConstraints(current_user, fetchedUser, payload)
+#update user copy instance
+    updatedUser: json = users_utils.handleUserInstanceUpdates(payload, fetchedUser)
+#use the updated copy to overwrite db
     newUserDict = {}
     key = (fetchedUser.id)
     newUserDict[key] = updatedUser
