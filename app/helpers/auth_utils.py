@@ -3,11 +3,15 @@ from dotenv import load_dotenv
 import os
 import jwt
 from jwt import PyJWTError
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, HTTPException, status, Cookie
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 from ..schemas.user import User
 from ..schemas.token import TokenData
+from ..schemas.login import Login
+from fastapi.responses import JSONResponse
+
+from typing import Optional
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/login')
 
 load_dotenv()
@@ -15,6 +19,78 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 REFRESH_TOKEN_EXPIRE_MINUTES = int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES"))
+
+def authenticate_user(username: str, password: str):
+  # no iteration needed on a real db so its an O(1) statement
+  # passwords are still to be hashed
+  for user in fake_users_db.values():
+      if user["userName"] == username:
+          if user["password"] == password:
+              return user
+          return False
+  return False
+
+def perform_login(login: Login):
+    user = authenticate_user(login.userName, login.password)
+    if not user:
+      raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                          detail="Invalid username or password")
+    access_t = create_access_token(TokenData(id=user["id"], role=user["role"]))
+    refresh_t  = create_refresh_token (TokenData(id=user["id"], role=user["role"]))
+    
+    # response = Token(access_token=access_t, refresh_token=refresh_t, token_role="bearer")
+    response = JSONResponse(content={"message": "Login successful"})
+    response.set_cookie(
+            key="access_token",
+            value=access_t,
+            httponly=False,  # Secure against XSS
+            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            samesite="lax",  # Adjust for cross-site if needed
+            secure=False,     # True in production (HTTPS)
+            path="/"
+        )
+    response.set_cookie(
+            key="refresh_token",
+            value=refresh_t,
+            httponly=False,  # Secure against XSS
+            max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60,
+            samesite="lax",  # Adjust for cross-site if needed
+            secure=False,     # True in production (HTTPS)
+            path="/"
+        )
+    return response;
+
+def perform_refresh(refresh_token: Optional[str] = Cookie(None)):
+    try:
+      payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+      user: str = payload
+      if user["id"] is None:
+          raise HTTPException(status_code=404, detail="User not found")
+    except (PyJWTError, InvalidTokenError):
+      raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Unauthorized access, please authenticate.")
+    access_t = create_access_token(TokenData(id=user["id"], role=user["role"]))
+    refresh_t = create_refresh_token(TokenData(id=user["id"], role=user["role"]))
+    response = JSONResponse(content={"message": "Token refresh successfully"})
+    response.set_cookie(
+            key="access_token",
+            value=access_t,
+            httponly=False,  # Secure against XSS
+            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            samesite="lax",  # Adjust for cross-site if needed
+            secure=False,     # True in production (HTTPS)
+            path="/"
+        )
+    response.set_cookie(
+            key="refresh_token",
+            value=refresh_t,
+            httponly=False,  # Secure against XSS
+            max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60,
+            samesite="lax",  # Adjust for cross-site if needed
+            secure=False,     # True in production (HTTPS)
+            path="/"
+        )
+    return response;
 
 def create_access_token(data: TokenData):
     to_encode = data.model_dump()
@@ -40,21 +116,33 @@ def verify_token_access(token: str, credentials_exception):
         raise credentials_exception
     return token_data
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(access_token: Optional[str] = Cookie(None),
+    # bearer_token: Optional[str] = Security(get__optional),
+):
+    # print(access_token)
+    # print("*********")
+    # print(bearer_token)
+    # print("*********")
+    # print(request.cookies)
     credentials_exception = HTTPException(status_code= 401,
                                           detail="Could not Validate Credentials",
                                           headers={"WWW-Authenticate": "Bearer"})
 
-    token = verify_token_access(token, credentials_exception)
+    token = access_token # or bearer_token
+    if not token:
+      raise credentials_exception
+    token_data = verify_token_access(token, credentials_exception)
+    user_data = fake_users_db.get(token_data["id"])
+    if not user_data:
+        raise credentials_exception
+    
     #must query db
-    return User(**fake_users_db.get(token["id"]))
+    return User(**user_data)
 
 def check_admin_role(current_user = Depends(get_current_user)):
-    print(current_user)
     if current_user.role != "sysAdmin":
         raise HTTPException(status_code=401, detail="Only admins")
     return current_user 
-
 
 def create_refresh_token(data: TokenData):
     to_encode = data.model_dump()
@@ -127,14 +215,3 @@ fake_users_db = {
     "address": "654 Cedar Ln, Denver, CO 80202"
   }
 }
-
-
-def authenticate_user(username: str, password: str):
-  # no iteration needed on a real db so its an O(1) statement
-  # passwords are still to be hashed
-  for user in fake_users_db.values():
-      if user["userName"] == username:
-          if user["password"] == password:
-              return user
-          return False
-  return False
