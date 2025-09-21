@@ -2,7 +2,6 @@ from fastapi import HTTPException
 from ...schemas.user import User
 
 def canCurrentUserUpdateUserRecord(currentUser: User, fetchedUser: User):
-  print(type(currentUser))
   return (currentUser.id == fetchedUser.id or currentUser.role == "sysAdmin")
 
 def updateableUserFieldsByRole(currentUser: User):

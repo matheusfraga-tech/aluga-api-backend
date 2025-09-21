@@ -1,13 +1,16 @@
 import json
 from ..helpers import auth_utils
+from fastapi import HTTPException, status
 from ..schemas.user import User
 
 def queryUserByUsername(userName: str):
   for dbUser in auth_utils.fake_users_db.values():
-            # print(dbUser["userName"])
-            if dbUser["userName"] == userName:
-                fetchedUser = User(**dbUser)
-                return fetchedUser
+    if dbUser["userName"] == userName:
+      fetchedUser = User(**dbUser)
+      return fetchedUser
+    
+  raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                          detail="User not found")
 
 def handleUserInstanceUpdates(payload: dict, fetchedUser: User):
   updatedUser: json = json.loads(fetchedUser.model_dump_json())

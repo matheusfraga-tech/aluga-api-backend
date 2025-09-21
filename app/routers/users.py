@@ -45,13 +45,11 @@ async def update_user(payload: dict, current_user: User = Depends(auth_utils.get
     return updatedUser
 
 @router.get("/{userName}", response_model=User, dependencies=[Depends(auth_utils.check_admin_role)])
-def read_root(userName: str):
-    if(auth_utils.fake_users_db.get(userName) == None):
-        raise HTTPException(status_code=404, detail="User not found")
-    return auth_utils.fake_users_db.get(userName)
+def query_user(userName: str):
+    return users_utils.queryUserByUsername(userName)
 
 @router.put("/{userName}", response_model=User)
-async def update_user(userName: str, payload: dict, current_user: User = Depends(auth_utils.get_current_user)):
+async def update_user(userName: str, payload: dict, current_user: User = Depends(auth_utils.check_admin_role)):
 ##apply strategy based on user role e.g.: admins can change all fields, customers only emailAddress, phoneNumber, address
 #find user
     fetchedUser: User = users_utils.queryUserByUsername(userName)
@@ -61,7 +59,7 @@ async def update_user(userName: str, payload: dict, current_user: User = Depends
     updatedUser: json = users_utils.handleUserInstanceUpdates(payload, fetchedUser)
 #use the updated copy to overwrite db
     newUserDict = {}
-    key = (fetchedUser.id)
+    key = fetchedUser.id
     newUserDict[key] = updatedUser
     auth_utils.fake_users_db.update(newUserDict)
     return updatedUser

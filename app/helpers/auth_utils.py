@@ -118,17 +118,15 @@ def verify_token_access(token: str, credentials_exception):
     return token_data
 
 async def get_current_user(request: Request):
-    access_token = handle_auth_method(request, "refresh_token");
-    
+    access_token = handle_auth_method(request, "access_token");
     credentials_exception = HTTPException(status_code= 401,
                                           detail="Could not Validate Credentials",
                                           headers={"WWW-Authenticate": "Bearer"})
-
-    token = access_token # or bearer_token
-    if not token:
+    
+    if not access_token:
       raise credentials_exception
-    token_data = verify_token_access(token, credentials_exception)
-    user_data = fake_users_db.get(token_data["id"])
+    access_token_data = verify_token_access(access_token, credentials_exception)
+    user_data = fake_users_db.get(access_token_data["id"])
     if not user_data:
         raise credentials_exception
     
