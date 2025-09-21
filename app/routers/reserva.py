@@ -1,27 +1,31 @@
-from fastapi import APIRouter, HTTPException
-from typing import List
-from app.schemas.reserva import ReservaCreate, ReservaResponse
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from ..database.database import get_db
+from ..database.models import Reserva
+from ..schemas.reserva import ReservaCreate, ReservaOut
 
 router = APIRouter(
     prefix="/reservas",
     tags=["reservas"]
 )
 
-# Banco de dados fake (temporário, só para teste)
-reservas_db = []
+@router.post("/", response_model=ReservaOut)
+def criar_reserva(reserva: ReservaCreate, db: Session = Depends(get_db)):
+    db_reserva = Reserva(**reserva.dict())
+    db.add(db_reserva)
+    db.commit()
+    db.refresh(db_reserva)
+    return db_reserva
 
-# POST /reservas/ → cria uma reserva (salva em uma lista na memória)
-@router.post("/", response_model=ReservaResponse)
-def criar_reserva(reserva: ReservaCreate):
-    nova_reserva = ReservaResponse(
-        id=len(reservas_db) + 1,
-        status="ativo",
-        **reserva.dict()
-    )
-    reservas_db.append(nova_reserva)
-    return nova_reserva
+@router.get("/", response_model=list[ReservaOut])
+def listar_reservas(db: Session = Depends(get_db)):
+    return db.query(Reserva).all()
 
-# GET /reservas/ → lista todas as reservas já criadas
-@router.get("/", response_model=List[ReservaResponse])
-def listar_reservas():
-    return reservas_db
+@router.delete("/{reserva_id}")
+def deletar_reserva(reserva_id: int, db: Session = Depends(get_db)):
+    reserva = db.query(Reserva).filter(Reserva.id == reserva_id).first()
+    if not reserva:
+        raise HTTPException(status_code=404, detail="Reserva não encontrada")
+    db.delete(reserva)
+    db.commit()
+    return {"message": f"Reserva {reserva_id} deletada com sucesso"}

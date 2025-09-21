@@ -9,6 +9,7 @@ from jwt.exceptions import InvalidTokenError
 #from passlib.context import CryptContext
 from pydantic import BaseModel
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/login')
+from app.database.database import SessionLocal
 
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -132,3 +133,10 @@ def authenticate_user(username: str, password: str):
     if user["password"] != password:
         return False
     return user
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

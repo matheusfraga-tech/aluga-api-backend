@@ -1,21 +1,16 @@
 from pydantic import BaseModel
-from datetime import date
+from datetime import datetime
 
-# Campos básicos da reserva
-class ReservaBase(BaseModel):
-    usuario_id: int
+#Schema para criar uma reserva
+class ReservaCreate(BaseModel):
+    cliente: str
+    data_checkin: datetime
+    data_checkout: datetime
     quarto_id: int
-    data_checkin: date
-    data_checkout: date
 
-# Usado quando o usuário cria uma nova reserva
-class ReservaCreate(ReservaBase):
-    pass
-
-# Resposta da API
-class ReservaResponse(ReservaBase):
+#Schema para exibir uma reserva
+class ReservaOut(ReservaCreate):
     id: int
-    status: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True  #permite converter do modelo SQLAlchemy
