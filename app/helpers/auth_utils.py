@@ -40,7 +40,7 @@ def perform_login(login: Login):
     response.set_cookie(
             key="access_token",
             value=access_t,
-            httponly=False,  # Secure against XSS
+            httponly=True,  # Secure against XSS
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             samesite="lax",  # Adjust for cross-site if needed
             secure=False,     # True in production (HTTPS)
@@ -49,7 +49,7 @@ def perform_login(login: Login):
     response.set_cookie(
             key="refresh_token",
             value=refresh_t,
-            httponly=False,  # Secure against XSS
+            httponly=True,  # Secure against XSS
             max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60,
             samesite="lax",  # Adjust for cross-site if needed
             secure=False,     # True in production (HTTPS)
@@ -76,7 +76,7 @@ def perform_refresh(request: Request):
     response.set_cookie(
             key="access_token",
             value=access_t,
-            httponly=False,  # Secure against XSS
+            httponly=True,  # Secure against XSS
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             samesite="lax",  # Adjust for cross-site if needed
             secure=False,     # True in production (HTTPS)
@@ -85,7 +85,7 @@ def perform_refresh(request: Request):
     response.set_cookie(
             key="refresh_token",
             value=refresh_t,
-            httponly=False,  # Secure against XSS
+            httponly=True,  # Secure against XSS
             max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60,
             samesite="lax",  # Adjust for cross-site if needed
             secure=False,     # True in production (HTTPS)
