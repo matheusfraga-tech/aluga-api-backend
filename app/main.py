@@ -1,25 +1,31 @@
-from fastapi import Depends, FastAPI
-from .dependencies import *
-from .routers import users, login
-from .database.test_connection import test_connection
+from fastapi import FastAPI
+from app.database.database import test_connection
+from app.routers import hotels, users, login, amenity_router
 
-app = FastAPI()
+app = FastAPI(title="Aluga API")
 
-# inclui routers
+# Inclui routers
+app.include_router(hotels.router)
 app.include_router(users.router)
 app.include_router(login.router)
+app.include_router(amenity_router.router)
+
 @app.on_event("startup")
-def startup_event():
-    # testa a conexão com o banco quando a API inicia
+def on_startup():
+    """
+    Evento de inicialização da API:
+    - Testa a conexão com o banco
+    """
     test_connection()
 
-@app.get("/")
-async def root():
-    return {"message": "Hello Bigger Applications!"}
+@app.get("/health")
+def healthcheck():
+    """
+    Endpoint para checar se a API e o banco estão funcionando
+    """
+    try:
+        test_connection()
+        return {"status": "ok"}
+    except Exception:
+        return {"status": "error"}
 
-@app.get("/hotel")
-def getHotel():
-    return {
-        "name": "Copacabana Palace",
-        "address": "Av. Atlântica, 1702, Copacabana, Rio de Janeiro"
-    }

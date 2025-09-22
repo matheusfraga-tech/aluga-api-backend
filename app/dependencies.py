@@ -3,64 +3,63 @@ from dotenv import load_dotenv
 import os
 import jwt
 from jwt import PyJWTError
-from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jwt.exceptions import InvalidTokenError
-#from passlib.context import CryptContext
+from fastapi import Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/login')
 
 load_dotenv()
+
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
-# should be in schemas/
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/login')
+
+
+# Schemas
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
 class DataToken(BaseModel):
     id: str
+    userName: str
+    type: str
+
 
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})  # this will be properly interpreted by JWT
-    print(to_encode["exp"])
+    to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 
 def verify_token_access(token: str, credentials_exception):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        #print("ASDSADSADASD")
-        print(payload)
-        #user_id: str = payload.get("user_id")
-        # if user_id is None:
-        #     raise credentials_exception
-        #refresh the token here if the remaining time is < x minutes/seconds? maybe
         token_data = payload
-    except (PyJWTError, InvalidTokenError) as e:
-        print("Token error:", e)
-        #print("error!")
+    except PyJWTError as e:
         raise credentials_exception
     return token_data
 
+
 def get_current_user(token: str = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(status_code= 401,
-                                          detail="Could not Validate Credentials",
-                                          headers={"WWW-Authenticate": "Bearer"})
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    token_data = verify_token_access(token, credentials_exception)
+    return token_data
 
-    token = verify_token_access(token, credentials_exception)
-
-    #user = db.query(models.User).filter(models.User.id == token.id).first()
-    #print(token)
-    return token
 
 def check_admin_role(current_user = Depends(get_current_user)):
-    if current_user["config"]["type"] != "sysAdmin":
+    if current_user["type"] != "sysAdmin":
         raise HTTPException(status_code=401, detail="Only admins")
     return current_user
+
 
 fake_users_db = {
   "john_doe": {
@@ -127,8 +126,6 @@ fake_users_db = {
 
 def authenticate_user(username: str, password: str):
     user = fake_users_db.get(username)
-    if not user:
-        return False
-    if user["password"] != password:
+    if not user or user["password"] != password:
         return False
     return user
