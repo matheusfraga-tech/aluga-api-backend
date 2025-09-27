@@ -1,6 +1,22 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Date, ForeignKey
 from sqlalchemy.orm import relationship
 from .database import Base
+import uuid
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(String, primary_key=True, index=True)
+    user_name = Column(String, unique=True, nullable=False)
+    password = Column(String, nullable=False)
+    role = Column(String, nullable=False)
+    birth_date = Column(Date, nullable=False)
+    email_address = Column(String, unique=True, nullable=False)
+    phone_number = Column(String)
+    first_name = Column(String)
+    last_name = Column(String)
+    address = Column(String)
+    
+    reservas = relationship("Reserva", back_populates="user")
 
 class Hotel(Base):
     __tablename__ = "hoteis"
@@ -18,9 +34,11 @@ class Quarto(Base):
 
 class Reserva(Base):
     __tablename__ = "reservas"
-    id = Column(Integer, primary_key=True, index=True)
-    cliente = Column(String)
-    data_checkin = Column(DateTime)
-    data_checkout = Column(DateTime)
-    quarto_id = Column(Integer, ForeignKey("quartos.id"))
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    quarto_id = Column(Integer, ForeignKey("quartos.id"), nullable=False)
+    data_checkin = Column(DateTime, nullable=False)
+    data_checkout = Column(DateTime, nullable=False)
+
+    user = relationship("User", back_populates="reservas")
     quarto = relationship("Quarto", back_populates="reservas")
