@@ -12,10 +12,33 @@ from fastapi.responses import JSONResponse
 
 
 load_dotenv()
-SECRET_KEY = os.getenv("SECRET_KEY")
+ACCESS_TOKEN_SECRET = os.getenv("ACCESS_TOKEN_SECRET")
+REFRESH_TOKEN_SECRET = os.getenv("REFRESH_TOKEN_SECRET")
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 REFRESH_TOKEN_EXPIRE_MINUTES = int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES"))
+
+async def get_current_user(request: Request):
+    access_token = handle_auth_method(request, "access_token");
+    print(access_token)
+    credentials_exception = HTTPException(status_code= 401,
+                                          detail="Could not Validate Credentials",
+                                          headers={"WWW-Authenticate": "Bearer"})
+    
+    if not access_token:
+      raise credentials_exception
+    access_token_data = verify_token_access(access_token, credentials_exception)
+    user_data = fake_users_db.get(access_token_data["id"])
+    if not user_data:
+        raise credentials_exception
+    
+    #must query db
+    return User(**user_data)
+
+def check_admin_role(current_user = Depends(get_current_user)):
+    if current_user.role != "sysAdmin":
+        raise HTTPException(status_code=401, detail="Only admins")
+    return current_user 
 
 def authenticate_user(login: Login):
   # no iteration needed on a real db so its an O(1) statement
@@ -57,10 +80,29 @@ def perform_login(login: Login):
         )
     return response;
 
+def perform_logout(request: Request, current_user = Depends(get_current_user)):
+  
+  access_token = handle_auth_method(request, "access_token")
+  refresh_token = handle_auth_method(request, "refresh_token")
+
+  response = JSONResponse(content={"message": "Logout successfully"})
+  # Cookies are working
+  response.delete_cookie(key="access_token")
+  response.delete_cookie(key="refresh_token")
+
+  # For headers
+  print("HEADERS: ")
+  print(request.headers.keys())
+  print("COOKIES: ")
+  print(request.cookies.keys())
+    # Invalidate access and refresh token
+    # Needs db working
+  return response
+
 def perform_refresh(request: Request):
     refresh_token = handle_auth_method(request, "refresh_token");
     try:
-      payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+      payload = jwt.decode(refresh_token, ACCESS_TOKEN_SECRET, algorithms=[ALGORITHM])
       user: str = payload
       
       if user["id"] is None:
@@ -98,18 +140,12 @@ def create_access_token(data: TokenData):
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})  # this will be properly interpreted by JWT
     print(to_encode["exp"])
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, ACCESS_TOKEN_SECRET, algorithm=ALGORITHM)
     return encoded_jwt
 
 def verify_token_access(token: str, credentials_exception):
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        #print("ASDSADSADASD")
-        #print(payload)
-        #user_id: str = payload.get("user_id")
-        # if user_id is None:
-        #     raise credentials_exception
-        #refresh the token here if the remaining time is < x minutes/seconds? maybe
+        payload = jwt.decode(token, ACCESS_TOKEN_SECRET, algorithms=[ALGORITHM])
         token_data = payload
     except (PyJWTError, InvalidTokenError) as e:
         print("Token error:", e)
@@ -117,33 +153,12 @@ def verify_token_access(token: str, credentials_exception):
         raise credentials_exception
     return token_data
 
-async def get_current_user(request: Request):
-    access_token = handle_auth_method(request, "access_token");
-    credentials_exception = HTTPException(status_code= 401,
-                                          detail="Could not Validate Credentials",
-                                          headers={"WWW-Authenticate": "Bearer"})
-    
-    if not access_token:
-      raise credentials_exception
-    access_token_data = verify_token_access(access_token, credentials_exception)
-    user_data = fake_users_db.get(access_token_data["id"])
-    if not user_data:
-        raise credentials_exception
-    
-    #must query db
-    return User(**user_data)
-
-def check_admin_role(current_user = Depends(get_current_user)):
-    if current_user.role != "sysAdmin":
-        raise HTTPException(status_code=401, detail="Only admins")
-    return current_user 
-
 def create_refresh_token(data: TokenData):
     to_encode = data.model_dump()
     print("create_refresh_token", to_encode)
     expire = datetime.now(timezone.utc) + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, REFRESH_TOKEN_SECRET, algorithm=ALGORITHM)
     print("create_refresh_token encoded_jwt", encoded_jwt)
     return encoded_jwt
 
@@ -156,8 +171,8 @@ def handle_auth_method(request: Request, key: str):
       keyValue = request.cookies.get(key)
       print("cookie auth")
   if not keyValue:
-      raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                      detail="Unauthorized access, please authenticate.")
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                      detail="No authentication data found, please authenticate")
   return keyValue
 
 fake_users_db = {

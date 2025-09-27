@@ -29,7 +29,7 @@ async def update_user(payload: dict, current_user: User = Depends(auth_utils.get
     if current_user == None:
         raise HTTPException(status_code=404, detail="User not found")
     user_routing_logic.handleUpdateConstraints(current_user, current_user, payload)
-    updatedUser: json = users_utils.handleUserInstanceUpdates(payload, current_user)  
+    updatedUser: json = users_utils.handle_user_instance_updates(payload, current_user)  
     try:
         validatedUser = User(**updatedUser)
     except ValidationError as e:
@@ -46,17 +46,17 @@ async def update_user(payload: dict, current_user: User = Depends(auth_utils.get
 
 @router.get("/{userName}", response_model=User, dependencies=[Depends(auth_utils.check_admin_role)])
 def query_user(userName: str):
-    return users_utils.queryUserByUsername(userName)
+    return users_utils.query_user_by_username(userName)
 
 @router.put("/{userName}", response_model=User)
 async def update_user(userName: str, payload: dict, current_user: User = Depends(auth_utils.check_admin_role)):
 ##apply strategy based on user role e.g.: admins can change all fields, customers only emailAddress, phoneNumber, address
 #find user
-    fetchedUser: User = users_utils.queryUserByUsername(userName)
+    fetchedUser: User = users_utils.query_user_by_username(userName)
 #apply strategy
     user_routing_logic.handleUpdateConstraints(current_user, fetchedUser, payload)
 #update user copy instance
-    updatedUser: json = users_utils.handleUserInstanceUpdates(payload, fetchedUser)
+    updatedUser: json = users_utils.handle_user_instance_updates(payload, fetchedUser)
 #use the updated copy to overwrite db
     newUserDict = {}
     key = fetchedUser.id
