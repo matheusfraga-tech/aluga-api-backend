@@ -64,7 +64,10 @@ async def update_user(userName: str, payload: dict, current_user: User = Depends
     auth_utils.fake_users_db.update(newUserDict)
     return updatedUser
 
-#@router.del("/{userName}")
+@router.delete("/{userName}", dependencies=[Depends(auth_utils.check_admin_role)])
+def delete_user(userName: str):
+    fetchedUser: User = users_utils.query_user_by_username(userName)
+    return users_utils.handle_user_delete(fetchedUser);
 
 @router.post("/", response_model=User)
 async def create_user(user: User):

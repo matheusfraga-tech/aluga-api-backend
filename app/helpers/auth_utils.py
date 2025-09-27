@@ -81,9 +81,6 @@ def perform_login(login: Login):
     return response;
 
 def perform_logout(request: Request, current_user = Depends(get_current_user)):
-  
-  access_token = handle_auth_method(request, "access_token")
-  refresh_token = handle_auth_method(request, "refresh_token")
 
   response = JSONResponse(content={"message": "Logout successfully"})
   # Cookies are working
@@ -102,9 +99,8 @@ def perform_logout(request: Request, current_user = Depends(get_current_user)):
 def perform_refresh(request: Request):
     refresh_token = handle_auth_method(request, "refresh_token");
     try:
-      payload = jwt.decode(refresh_token, ACCESS_TOKEN_SECRET, algorithms=[ALGORITHM])
+      payload = jwt.decode(refresh_token, REFRESH_TOKEN_SECRET, algorithms=[ALGORITHM])
       user: str = payload
-      
       if user["id"] is None:
         raise HTTPException(status_code=404, detail="User not found")
     except (PyJWTError, InvalidTokenError):
