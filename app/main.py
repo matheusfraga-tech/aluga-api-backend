@@ -1,11 +1,15 @@
 from fastapi import FastAPI
 from .routers import users, login
 from fastapi.middleware.cors import CORSMiddleware
+from .routers import users, login, reserva
+from .database.test_connection import test_connection, engine
+from sqlalchemy import text
 
 origins = [
     "http://localhost:8000",
     "http://127.0.0.1:8000"
     ]
+
 
 app = FastAPI()
 app.add_middleware(
@@ -18,6 +22,7 @@ app.add_middleware(
 # inclui routers
 app.include_router(users.router)
 app.include_router(login.router)
+app.include_router(reserva.router)
 
 @app.get("/")
 async def root():
