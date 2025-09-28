@@ -1,45 +1,63 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+
 from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
 from app.database.database import get_db
 from app.services.hotel_service import HotelService
-from app.schemas.hotel import HotelIn, HotelDetail, Page
+from app.schemas.hotel import HotelIn, HotelDetail
+from app.schemas.pagination import Page
 from app.schemas.room import RoomIn
 from app.schemas.media import MediaIn
 from app.schemas.hotel_filter import HotelFilter
 
 router = APIRouter(prefix="/hotels", tags=["hotels"])
 
-# -------------------- LIST HOTELS --------------------
-@router.get("/", response_model=Page[HotelDetail])
-def list_hotels(filter: HotelFilter = Depends(), db: Session = Depends(get_db)):
-    """
-    Lista hotéis com filtros, ordenação e paginação.
-    """
-    service = HotelService(db)
-    return service.list_hotels(filter)
 
-# -------------------- GET HOTEL DETAIL --------------------
+# -------------------- GET HOTEL --------------------
 @router.get("/{hotel_id}", response_model=HotelDetail)
-def get_hotel(hotel_id: int, db: Session = Depends(get_db)):
-    """
-    Retorna detalhes completos de um hotel.
-    """
+def get_hotel(
+    hotel_id: int,
+    filters: HotelFilter = Depends(),
+    db: Session = Depends(get_db)
+):
     service = HotelService(db)
-    hotel = service.get_hotel(hotel_id)
+    hotel = service.get_hotel(
+        hotel_id,
+        user_lat=filters.user_lat,
+        user_lng=filters.user_lng,
+        check_in=filters.check_in,
+        check_out=filters.check_out
+    )
     if not hotel:
         raise HTTPException(status_code=404, detail="Hotel not found")
     return hotel
 
+
+
 # -------------------- CREATE HOTEL --------------------
-@router.post("/", response_model=HotelDetail)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 def create_hotel(hotel_in: HotelIn, db: Session = Depends(get_db)):
     """
-    Cria um hotel simples (sem rooms, media ou amenities).
+    Cria um novo hotel, validando duplicidade e proximidade geográfica (~11m).
     """
     service = HotelService(db)
-    return service.create_hotel(hotel_in)
+    try:
+        hotel = service.create_hotel(hotel_in)
+        return {"id": hotel.id}
+    except ValueError as e:
+        # Trata o caso de proximidade de outro hotel (erro 409)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        )
+    except Exception as e:
+        # Trata outros erros genéricos
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
 
 # -------------------- UPDATE HOTEL --------------------
 @router.put("/{hotel_id}", response_model=HotelDetail)
@@ -53,6 +71,7 @@ def update_hotel(hotel_id: int, hotel_in: HotelIn, db: Session = Depends(get_db)
         raise HTTPException(status_code=404, detail="Hotel not found")
     return hotel
 
+
 # -------------------- DELETE HOTEL --------------------
 @router.delete("/{hotel_id}", status_code=204)
 def delete_hotel(hotel_id: int, db: Session = Depends(get_db)):
@@ -65,6 +84,7 @@ def delete_hotel(hotel_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Hotel not found")
     return
 
+
 # -------------------- CREATE FULL HOTEL --------------------
 @router.post("/full", response_model=HotelDetail)
 def create_full_hotel(hotel_in: HotelIn, db: Session = Depends(get_db)):
@@ -72,9 +92,10 @@ def create_full_hotel(hotel_in: HotelIn, db: Session = Depends(get_db)):
     Cria o hotel junto com rooms, media e amenities em um único payload.
     """
     service = HotelService(db)
-    return service.create_full_hotel(hotel_in)
+    return service.create_full(hotel_in)
 
-# -------------------- ORQUESTRATED ENDPOINTS --------------------
+
+# -------------------- ORCHESTRATED ENDPOINTS --------------------
 @router.post("/{hotel_id}/rooms", response_model=HotelDetail)
 def add_rooms(hotel_id: int, rooms_in: List[RoomIn], db: Session = Depends(get_db)):
     """
@@ -83,6 +104,7 @@ def add_rooms(hotel_id: int, rooms_in: List[RoomIn], db: Session = Depends(get_d
     service = HotelService(db)
     return service.add_rooms(hotel_id, rooms_in)
 
+
 @router.post("/{hotel_id}/media", response_model=HotelDetail)
 def add_media(hotel_id: int, media_in: List[MediaIn], db: Session = Depends(get_db)):
     """
@@ -90,6 +112,7 @@ def add_media(hotel_id: int, media_in: List[MediaIn], db: Session = Depends(get_
     """
     service = HotelService(db)
     return service.add_media(hotel_id, media_in)
+
 
 @router.post("/{hotel_id}/amenities", response_model=HotelDetail)
 def add_amenities(hotel_id: int, amenity_ids: List[int], db: Session = Depends(get_db)):

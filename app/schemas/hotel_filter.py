@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import date
 
@@ -7,61 +7,51 @@ class HotelFilter(BaseModel):
     q: Optional[str] = Field(None, description="Busca textual pelo nome do hotel")
     city: Optional[str] = None
     neighborhood: Optional[str] = None
-    amenities: Optional[List[int]] = Field(None, description="IDs das amenities")
+    amenities: Optional[List[int]] = None
     room_type: Optional[str] = None
 
     # Filtros de preço
-    price_min: Optional[float] = Field(None, description="Preço mínimo (usa min_price_available se datas informadas)")
-    price_max: Optional[float] = Field(None, description="Preço máximo (usa min_price_available se datas informadas)")
+    price_min: Optional[float] = None
+    price_max: Optional[float] = None
 
     # Filtros de período
-    check_in: Optional[date] = Field(None, description="Data de check-in")
-    check_out: Optional[date] = Field(None, description="Data de check-out")
+    check_in: Optional[date] = None
+    check_out: Optional[date] = None
 
     # Ordenação
-    sort: Optional[str] = Field(
-        "id",
-        description="Critério de ordenação: id, price, rating, popularity, distance"
-    )
+    sort: Optional[str] = Field("id", description="Critério de ordenação: id, price, rating, popularity, distance")
 
     # Filtros relacionados a distância
-    user_lat: Optional[float] = Field(None, description="Latitude do ponto de referência para ordenação por distância")
-    user_lng: Optional[float] = Field(None, description="Longitude do ponto de referência para ordenação por distância")
+    user_lat: Optional[float] = None
+    user_lng: Optional[float] = None
 
-    # Filtros de stars
-    stars_min: Optional[float] = Field(None, ge=0, le=5, description="Nota mínima do hotel (0-5)")
-    stars_max: Optional[float] = Field(None, ge=0, le=5, description="Nota máxima do hotel (0-5)")
+    # Filtros de estrelas
+    stars_min: Optional[float] = Field(None, ge=0, le=5)
+    stars_max: Optional[float] = Field(None, ge=0, le=5)
 
     # Paginação
-    page: int = Field(1, ge=1, description="Número da página")
-    size: int = Field(20, ge=1, le=100, description="Tamanho da página")
+    page: int = Field(1, ge=1)
+    size: int = Field(20, ge=1, le=100)
 
-    @root_validator
-    def validate_filters(cls, values):
-        sort = values.get("sort")
-        lat = values.get("user_lat")
-        lng = values.get("user_lng")
-        check_in = values.get("check_in")
-        check_out = values.get("check_out")
-        stars_min = values.get("stars_min")
-        stars_max = values.get("stars_max")
+    # ----------------- FIELD VALIDATORS -----------------
+    @field_validator("user_lat")
+    @classmethod
+    def latitude_range(cls, v):
+        if v is not None and not (-90 <= v <= 90):
+            raise ValueError("user_lat must be between -90 and 90")
+        return v
 
-        # Validação de distância
-        if sort == "distance" and (lat is None or lng is None):
-            raise ValueError("Para ordenação por distância, user_lat e user_lng devem ser fornecidos")
+    @field_validator("user_lng")
+    @classmethod
+    def longitude_range(cls, v):
+        if v is not None and not (-180 <= v <= 180):
+            raise ValueError("user_lng must be between -180 and 180")
+        return v
 
-        # Validação de datas
-        if check_in and check_out and check_out <= check_in:
-            raise ValueError("check_out deve ser posterior a check_in")
-
-        # Validação de stars
-        if stars_min is not None and stars_max is not None and stars_max < stars_min:
-            raise ValueError("stars_max deve ser maior ou igual a stars_min")
-
-        # Validação de sort
-        allowed_sort = {"id", "price", "rating", "popularity", "distance"}
-        if sort not in allowed_sort:
-            raise ValueError(f"sort deve ser um dos: {', '.join(allowed_sort)}")
-
-        return values
-
+    @field_validator("sort")
+    @classmethod
+    def allowed_sort(cls, v):
+        allowed = {"id", "price", "rating", "popularity", "distance"}
+        if v not in allowed:
+            raise ValueError(f"sort must be one of: {', '.join(allowed)}")
+        return v

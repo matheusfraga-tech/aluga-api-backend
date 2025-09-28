@@ -32,12 +32,14 @@ def get_db() -> Generator:
     finally:
         db.close()
 
-def test_connection() -> None:
+def test_connection() -> str:
+    """
+    Testa a conexão com o banco e retorna informações do servidor.
+    """
     try:
         with engine.connect() as conn:
             version = conn.execute(text("SELECT version();")).scalar()
-            print(f"Conectado ao Postgres: {version}")
+            return version  # <-- retorna a versão do Postgres
     except Exception as e:
-        print("Erro ao conectar no banco:", e)
-        raise
+        raise e
 

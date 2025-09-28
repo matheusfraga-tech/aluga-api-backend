@@ -1,7 +1,6 @@
 
 from typing import Generic, TypeVar, List
 from pydantic import BaseModel
-from pydantic.generics import GenericModel
 
 T = TypeVar("T")
 
@@ -10,7 +9,7 @@ class PageMeta(BaseModel):
     size: int
     total: int
 
-class Page(GenericModel, Generic[T]):
+class Page(BaseModel, Generic[T]):
     meta: PageMeta
     items: List[T]
 
