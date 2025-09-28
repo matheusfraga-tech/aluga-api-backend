@@ -121,7 +121,7 @@ class HotelRepository:
             media = Media(
                 hotel_id=hotel.id,
                 url=m.url,
-                type=m.kind or "default"
+                kind=m.kind or "default"
             )
             db.add(media)
 

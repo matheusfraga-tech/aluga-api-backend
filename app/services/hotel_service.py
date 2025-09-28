@@ -176,6 +176,7 @@ class HotelService:
             raise HTTPException(status_code=422, detail=errors)
 
 
+
     # -------------------- SEARCH --------------------
     def search(
         self,
@@ -184,72 +185,17 @@ class HotelService:
         user_lng: Optional[float] = None
     ) -> List[Hotel]:
         """
-        Busca hotéis com filtros, ordenação e cálculo de distância.
+        Busca hotéis usando o repository e calcula distância e thumbnail.
         """
-
         # Valida consistência de negócio
         self.validate_filters(filters)
 
-        hotels = self.repo.list(self.db)
+        # Usa o search do repository
+        page_result = self.repo.search(self.db, filters)
 
-        # Filtros de texto e localização
-        if filters.q:
-            hotels = [h for h in hotels if filters.q.lower() in h.name.lower()]
-        if filters.city:
-            hotels = [h for h in hotels if filters.city.lower() in h.city.lower()]
-        if filters.neighborhood:
-            hotels = [
-                h for h in hotels
-                if h.neighborhood and filters.neighborhood.lower() in h.neighborhood.lower()
-            ]
+        hotels = [item for item in page_result.items]  # lista de Hotel ou HotelCard
 
-        # Filtros de comodidades
-        if filters.amenities:
-            hotels = [
-                h for h in hotels
-                if all(a_id in [a.id for a in h.amenities] for a_id in filters.amenities)
-            ]
-
-        # Filtro por tipo de quarto
-        if filters.room_type:
-            hotels = [
-                h for h in hotels
-                if any(room.room_type == filters.room_type for room in h.rooms)
-            ]
-
-        # Preço e disponibilidade
-        check_in, check_out = filters.check_in, filters.check_out
-        price_min, price_max = filters.price_min, filters.price_max
-
-        for h in hotels:
-            h.min_price_general = self.calculate_min_price_general(h)
-            if check_in and check_out:
-                available_rooms = [
-                    r for r in h.rooms
-                    if r.total_units > 0 and self.repo.is_room_available(r, check_in, check_out)
-                ]
-                h.min_price_available = min([r.base_price for r in available_rooms], default=None)
-            else:
-                h.min_price_available = None
-
-        if price_min is not None:
-            hotels = [
-                h for h in hotels
-                if (h.min_price_available if h.min_price_available is not None else h.min_price_general) >= price_min
-            ]
-        if price_max is not None:
-            hotels = [
-                h for h in hotels
-                if (h.min_price_available if h.min_price_available is not None else h.min_price_general) <= price_max
-            ]
-
-        # Filtros de estrelas
-        if filters.stars_min is not None:
-            hotels = [h for h in hotels if h.stars >= filters.stars_min]
-        if filters.stars_max is not None:
-            hotels = [h for h in hotels if h.stars <= filters.stars_max]
-
-        # Distância
+        # Calcula distância se coordenadas do usuário forem fornecidas
         if user_lat is not None and user_lng is not None:
             for h in hotels:
                 h.distance_km = self._calculate_distance(h, user_lat, user_lng)
@@ -257,27 +203,6 @@ class HotelService:
             for h in hotels:
                 h.distance_km = None
 
-        # Ordenação
-        if filters.sort:
-            if filters.sort == "price":
-                hotels.sort(
-                    key=lambda h: h.min_price_available
-                    if h.min_price_available is not None
-                    else (h.min_price_general if h.min_price_general is not None else float('inf'))
-                )
-            elif filters.sort == "distance" and user_lat is not None and user_lng is not None:
-                hotels.sort(
-                    key=lambda h: h.distance_km
-                    if h.distance_km is not None
-                    else float('inf')
-                )
-            elif filters.sort == "stars":
-                hotels.sort(key=lambda h: h.stars, reverse=True)
-            elif filters.sort == "popularity":
-                hotels.sort(key=lambda h: h.popularity, reverse=True)
-
-        # Definir thumbnail
-        for h in hotels:
-            h.thumbnail = self._get_thumbnail(h)
 
         return hotels
+

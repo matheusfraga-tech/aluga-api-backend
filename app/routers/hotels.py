@@ -1,4 +1,3 @@
-
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -6,12 +5,43 @@ from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.services.hotel_service import HotelService
 from app.schemas.hotel import HotelIn, HotelDetail
-from app.schemas.pagination import Page
 from app.schemas.room import RoomIn
 from app.schemas.media import MediaIn
 from app.schemas.hotel_filter import HotelFilter
 
 router = APIRouter(prefix="/hotels", tags=["hotels"])
+
+# -------------------- SEARCH --------------------
+@router.get("/search")
+def search_hotels(filters: HotelFilter = Depends(), db: Session = Depends(get_db)):
+    service = HotelService(db)
+    return service.search(filters, user_lat=filters.user_lat, user_lng=filters.user_lng)
+
+
+# -------------------- CREATE FULL HOTEL --------------------
+@router.post("/full", response_model=HotelDetail)
+def create_full_hotel(hotel_in: HotelIn, db: Session = Depends(get_db)):
+    """
+    Cria o hotel junto com rooms, media e amenities em um único payload.
+    """
+    service = HotelService(db)
+    return service.create_full(hotel_in)
+
+
+# -------------------- CREATE HOTEL --------------------
+@router.post("/", status_code=status.HTTP_201_CREATED)
+def create_hotel(hotel_in: HotelIn, db: Session = Depends(get_db)):
+    """
+    Cria um novo hotel, validando duplicidade e proximidade geográfica (~11m).
+    """
+    service = HotelService(db)
+    try:
+        hotel = service.create_hotel(hotel_in)
+        return {"id": hotel.id}
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 # -------------------- GET HOTEL --------------------
@@ -32,31 +62,6 @@ def get_hotel(
     if not hotel:
         raise HTTPException(status_code=404, detail="Hotel not found")
     return hotel
-
-
-
-# -------------------- CREATE HOTEL --------------------
-@router.post("/", status_code=status.HTTP_201_CREATED)
-def create_hotel(hotel_in: HotelIn, db: Session = Depends(get_db)):
-    """
-    Cria um novo hotel, validando duplicidade e proximidade geográfica (~11m).
-    """
-    service = HotelService(db)
-    try:
-        hotel = service.create_hotel(hotel_in)
-        return {"id": hotel.id}
-    except ValueError as e:
-        # Trata o caso de proximidade de outro hotel (erro 409)
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(e)
-        )
-    except Exception as e:
-        # Trata outros erros genéricos
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
 
 
 # -------------------- UPDATE HOTEL --------------------
@@ -85,16 +90,6 @@ def delete_hotel(hotel_id: int, db: Session = Depends(get_db)):
     return
 
 
-# -------------------- CREATE FULL HOTEL --------------------
-@router.post("/full", response_model=HotelDetail)
-def create_full_hotel(hotel_in: HotelIn, db: Session = Depends(get_db)):
-    """
-    Cria o hotel junto com rooms, media e amenities em um único payload.
-    """
-    service = HotelService(db)
-    return service.create_full(hotel_in)
-
-
 # -------------------- ORCHESTRATED ENDPOINTS --------------------
 @router.post("/{hotel_id}/rooms", response_model=HotelDetail)
 def add_rooms(hotel_id: int, rooms_in: List[RoomIn], db: Session = Depends(get_db)):
@@ -121,4 +116,3 @@ def add_amenities(hotel_id: int, amenity_ids: List[int], db: Session = Depends(g
     """
     service = HotelService(db)
     return service.add_amenities(hotel_id, amenity_ids)
-
