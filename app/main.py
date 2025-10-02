@@ -6,8 +6,16 @@ from app.routers import hotels, users, login, amenity_router
 import psycopg2
 import logging
 import time
+from fastapi.middleware.cors import CORSMiddleware
 
 # -------------------- Configurações --------------------
+
+# -------------------- CORS --------------------
+origins = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000"
+    ]
+
 API_PREFIX = "/aluga-api"
 API_VERSION = "v1"
 
@@ -17,6 +25,15 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 # -------------------- App --------------------
 app = FastAPI(title="Aluga API")
+
+# -------------------- Middleware --------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Or use ["*"] for all (not recommended in production)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # -------------------- Routers --------------------
 # Todos os routers ficam atrás do prefixo /aluga-api/v1
@@ -79,4 +96,3 @@ def healthcheck():
 
     logger.info(f"Healthcheck acessado: {datetime.utcnow().isoformat()} - Status: {result['api_status']}")
     return JSONResponse(status_code=status_code, content=result)
-
