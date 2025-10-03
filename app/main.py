@@ -16,9 +16,6 @@ origins = [
     "http://127.0.0.1:8000"
     ]
 
-API_PREFIX = "/aluga-api"
-API_VERSION = "v1"
-
 # Logging estruturado
 logger = logging.getLogger("aluga-api")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -36,11 +33,10 @@ app.add_middleware(
 )
 
 # -------------------- Routers --------------------
-# Todos os routers ficam atrás do prefixo /aluga-api/v1
-app.include_router(hotels.router, prefix=f"{API_PREFIX}/{API_VERSION}", tags=["hotels"])
-app.include_router(users.router, prefix=f"{API_PREFIX}/{API_VERSION}", tags=["users"])
-app.include_router(login.router, prefix=f"{API_PREFIX}/{API_VERSION}", tags=["auth"])
-app.include_router(amenity_router.router, prefix=f"{API_PREFIX}/{API_VERSION}", tags=["amenities"])
+app.include_router(hotels.router, tags=["hotels"])
+app.include_router(users.router, tags=["users"])
+app.include_router(login.router, tags=["auth"])
+app.include_router(amenity_router.router, tags=["amenities"])
 
 # -------------------- Eventos de Startup --------------------
 @app.on_event("startup")
@@ -57,7 +53,7 @@ def on_startup():
         logger.error(f"Falha ao conectar ao banco: {e}")
 
 # -------------------- Healthcheck --------------------
-@app.get(f"{API_PREFIX}/health", tags=["Health"])
+@app.get("/health", tags=["Health"])
 def healthcheck():
     """
     Healthcheck da API:
@@ -71,8 +67,7 @@ def healthcheck():
         "api_status": "ok",
         "db_status": "unknown",
         "details": {},
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "api_version": API_VERSION
+        "timestamp": datetime.utcnow().isoformat() + "Z"
     }
 
     try:
