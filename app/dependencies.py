@@ -58,9 +58,11 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     return token
 
 def check_admin_role(current_user = Depends(get_current_user)):
-    if current_user["config"]["type"] != "sysAdmin":
+    # Acessando a chave "type" diretamente, que é o correto
+    if current_user["type"] != "sysAdmin":
         raise HTTPException(status_code=401, detail="Only admins")
     return current_user
+
 
 fake_users_db = {
   "john_doe": {
@@ -124,6 +126,21 @@ fake_users_db = {
     "address": "654 Cedar Ln, Denver, CO 80202"
   }
 }
+
+fake_hoteis_db = {
+    1: {"id": 1, "nome": "Copacabana Palace"},
+    2: {"id": 2, "nome": "Hotel Fasano"}
+}
+
+fake_avaliacoes_db = [
+    {
+        "id": "aval001",
+        "nota": 5,
+        "comentario": "Estadia maravilhosa, vista incrível!",
+        "hotelId": 1,
+        "usuarioId": "user001"
+    }
+]
 
 def authenticate_user(username: str, password: str):
     user = fake_users_db.get(username)
