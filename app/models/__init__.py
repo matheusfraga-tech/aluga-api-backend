@@ -14,6 +14,7 @@ from .amenity import Amenity
 from .booking import Booking
 from .media import Media
 from .review import Review
+from .reserva import Reserva
 
 all_models = [
     Hotel,
@@ -21,6 +22,7 @@ all_models = [
     Amenity,
     Booking,
     Media,
-    Review
+    Review,
+    Reserva
 ]
 
