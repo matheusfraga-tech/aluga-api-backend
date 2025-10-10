@@ -5,10 +5,11 @@ import jwt
 from jwt import PyJWTError
 from fastapi import Depends, HTTPException, status, Cookie, Request
 from jwt.exceptions import InvalidTokenError
-from ..schemas.user import User
 from ..schemas.token import TokenData, Token
 from ..schemas.login import Login
 from fastapi.responses import JSONResponse
+from app.database.database import get_db
+from ..services.user_service import UserDatabaseService
 
 
 load_dotenv()
@@ -19,6 +20,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 REFRESH_TOKEN_EXPIRE_MINUTES = int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES"))
 
 async def get_current_user(request: Request):
+    
     access_token = handle_auth_method(request, "access_token");
     print(access_token)
     credentials_exception = HTTPException(status_code= 401,
@@ -28,12 +30,15 @@ async def get_current_user(request: Request):
     if not access_token:
       raise credentials_exception
     access_token_data = verify_token_access(access_token, credentials_exception)
-    user_data = fake_users_db.get(access_token_data["id"])
+    db_gen = get_db()
+    db = next(db_gen)   
+    user_data = UserDatabaseService(db).get_by_id(access_token_data["id"])
+    db_gen.close()
     if not user_data:
         raise credentials_exception
     
     #must query db
-    return User(**user_data)
+    return user_data
 
 def check_admin_role(current_user = Depends(get_current_user)):
     if current_user.role != "sysAdmin":
@@ -41,22 +46,24 @@ def check_admin_role(current_user = Depends(get_current_user)):
     return current_user 
 
 def authenticate_user(login: Login):
-  # no iteration needed on a real db so its an O(1) statement
   # passwords are still to be hashed
-  for user in fake_users_db.values():
-      if user["userName"] == login.userName:
-          if user["password"] == login.password:
-              return user
-          raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                          detail="Invalid username or password")
-  raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                          detail="Invalid username or password")
+  db_gen = get_db()
+  db = next(db_gen)
+  
+  fetchedUser = UserDatabaseService(db).get_by_username(login.userName)
+  if not fetchedUser:
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
+  db_gen.close()
+
+  if(login.userName == fetchedUser.userName and login.password == fetchedUser.password):
+     return fetchedUser
+  raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
 
 def perform_login(login: Login):
     user = authenticate_user(login)
-    
-    access_t = create_access_token(TokenData(id=user["id"], role=user["role"]))
-    refresh_t  = create_refresh_token (TokenData(id=user["id"], role=user["role"])) 
+
+    access_t = create_access_token(TokenData(id=user.id, role=user.role))
+    refresh_t  = create_refresh_token (TokenData(id=user.id, role=user.role)) 
     tokenContent = Token(access_token=access_t, refresh_token=refresh_t, token_role="bearer")
     
     response = JSONResponse(content={"message": "Login successful", "token_content": tokenContent.model_dump()})
@@ -145,7 +152,6 @@ def verify_token_access(token: str, credentials_exception):
         token_data = payload
     except (PyJWTError, InvalidTokenError) as e:
         print("Token error:", e)
-        #print("error!")
         raise credentials_exception
     return token_data
 

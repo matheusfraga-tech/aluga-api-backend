@@ -1,10 +1,11 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 import uuid
 import re
 
 class User(BaseModel):
+
     id:  str = Field(default_factory=lambda: str(uuid.uuid4()))
     userName: str = Field(min_length=3, max_length=15) # validade unique
     password: str = Field(pattern=re.compile(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$")) 
@@ -37,4 +38,18 @@ class User(BaseModel):
 
     class Config:
         from_attributes = True
+        orm_mode = True
+        
+class UserOut(BaseModel):
+
+    userName: str = Field(min_length=3, max_length=15) # validade unique
+    role: str
+    firstName: str | None = None
+    lastName: str | None = None
+    address: str | None = None
+    emailAddress: str | None = None
+
+    class Config:
+        from_attributes = True
+        orm_mode = True
 

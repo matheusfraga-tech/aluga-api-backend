@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Cookie, Request
-from typing import Optional
+from fastapi import APIRouter, Request
 from ..helpers import auth_utils 
 from ..schemas.login import Login
 import json
@@ -42,8 +41,7 @@ responses_refresh: json = {
   }
 }
 
-@router.post('/login', 
-             responses=responses_login)
+@router.post('/login', responses=responses_login)
 def perform_login(login: Login):
   return auth_utils.perform_login(login)
 

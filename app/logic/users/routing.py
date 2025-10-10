@@ -1,10 +1,10 @@
 from fastapi import HTTPException
 from ...schemas.user import User
 
-def canCurrentUserUpdateUserRecord(currentUser: User, fetchedUser: User):
+def can_current_user_update_user_record(currentUser: User, fetchedUser: User):
   return (currentUser.id == fetchedUser.id or currentUser.role == "sysAdmin")
 
-def updateableUserFieldsByRole(currentUser: User):
+def updateable_user_fields_by_role(currentUser: User):
   match currentUser.role:
     case "customer":
       return ["emailAddress", "phoneNumber", "address"]
@@ -13,11 +13,11 @@ def updateableUserFieldsByRole(currentUser: User):
     case _:
       return []
 
-def handleUpdateConstraints(currentUser: User, fetchedUser: User, updatePayload: dict):
-  if(canCurrentUserUpdateUserRecord(currentUser, fetchedUser)) != True:
+def handle_update_constraints(currentUser: User, fetchedUser: User, updatePayload: dict):
+  if(can_current_user_update_user_record(currentUser, fetchedUser)) != True:
     raise HTTPException(status_code=422, detail="User has no such privilege")
   
-  openToUpdateFieldSet = set(updateableUserFieldsByRole(currentUser))
+  openToUpdateFieldSet = set(updateable_user_fields_by_role(currentUser))
   payloadUpdateFieldSet = set(updatePayload.keys())
   if(payloadUpdateFieldSet.issubset(openToUpdateFieldSet)):
     return True
