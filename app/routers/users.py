@@ -1,7 +1,11 @@
 from typing import Union
+from pydantic import ValidationError
 from fastapi import APIRouter, Depends, HTTPException
-from .. import dependencies
+from ..helpers import auth_utils
+from ..helpers import users_utils
 from ..schemas.user import User
+from ..logic.users import routing as user_routing_logic
+import json
 
 router = APIRouter(
     prefix="/users",
@@ -10,30 +14,72 @@ router = APIRouter(
 
 ##  ROUTES
 
-@router.get("/", dependencies=[Depends(dependencies.check_admin_role)])
+@router.get("/", dependencies=[Depends(auth_utils.check_admin_role)])
 def read_root():
-    return dependencies.fake_users_db
+    return auth_utils.fake_users_db
 
-@router.get("/me")
-def get_current_user(current_user: str = Depends(dependencies.get_current_user)):
-    print("outer get_current_user")
-    print(current_user)
+@router.get("/me", response_model=User)
+def get_self(current_user: User = Depends(auth_utils.get_current_user)):
     if current_user != None:
-        return current_user 
+        return current_user
     raise HTTPException(status_code=404, detail="User not found")
-#@router.put("/me")
 
-@router.get("/{userName}", dependencies=[Depends(dependencies.check_admin_role)])
-def read_root(userName: str):
-    if(dependencies.fake_users_db.get(userName) == None):
+@router.put("/me", response_model=User)
+async def update_user(payload: dict, current_user: User = Depends(auth_utils.get_current_user)):
+    if current_user == None:
         raise HTTPException(status_code=404, detail="User not found")
-    return dependencies.fake_users_db.get(userName)
-#@router.put("/{userName}")
-#@router.del("/{userName}")
+    user_routing_logic.handleUpdateConstraints(current_user, current_user, payload)
+    updatedUser: json = users_utils.handle_user_instance_updates(payload, current_user)  
+    try:
+        validatedUser = User(**updatedUser)
+    except ValidationError as e:
+        raise HTTPException(
+                status_code=422,
+                detail=e.errors(),
+                headers={"Content-Type": "application/json"}
+            )
 
-@router.post("/register")
-async def create_item(user: User):
-    #create user record
-    #create primary contact record
-    #relate both records
+    newUserDict = {}
+    newUserDict[validatedUser.id] = validatedUser.model_dump()
+    auth_utils.fake_users_db.update(newUserDict)
+    return updatedUser
+
+@router.get("/{userName}", response_model=User, dependencies=[Depends(auth_utils.check_admin_role)])
+def query_user(userName: str):
+    return users_utils.query_user_by_username(userName)
+
+@router.put("/{userName}", response_model=User)
+async def update_user(userName: str, payload: dict, current_user: User = Depends(auth_utils.check_admin_role)):
+##apply strategy based on user role e.g.: admins can change all fields, customers only emailAddress, phoneNumber, address
+#find user
+    fetchedUser: User = users_utils.query_user_by_username(userName)
+#apply strategy
+    user_routing_logic.handleUpdateConstraints(current_user, fetchedUser, payload)
+#update user copy instance
+    updatedUser: json = users_utils.handle_user_instance_updates(payload, fetchedUser)
+#use the updated copy to overwrite db
+    newUserDict = {}
+    key = fetchedUser.id
+    newUserDict[key] = updatedUser
+    auth_utils.fake_users_db.update(newUserDict)
+    return updatedUser
+
+@router.delete("/{userName}", dependencies=[Depends(auth_utils.check_admin_role)])
+def delete_user(userName: str):
+    fetchedUser: User = users_utils.query_user_by_username(userName)
+    return users_utils.handle_user_delete(fetchedUser);
+
+@router.post("/", response_model=User)
+async def create_user(user: User):
+#check username exists in DB
+    for dbUser in auth_utils.fake_users_db.values():
+        if dbUser["userName"] == user.userName:
+            raise HTTPException(status_code=404, detail="User already exists")
+#create user record
+    newUserDict = {}
+    newUserDict[user.id] = json.loads(user.model_dump_json())
+    # print(newUserDict)
+    auth_utils.fake_users_db.update(newUserDict)
+#create primary contact record
+#relate both records
     return user
