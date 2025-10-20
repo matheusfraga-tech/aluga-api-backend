@@ -1,8 +1,8 @@
-from typing import Optional
+from typing import Optional, List
 from pydantic import ValidationError
 from fastapi import APIRouter, Depends, HTTPException, status
-from ..helpers import auth_utils
-from ..schemas.user import User, UserOut
+from ..services import auth_service
+from ..schemas.user import User, UserOut, UserSignup
 from app.models.user import User as ORMUser
 from sqlalchemy.orm import Session
 from app.database.database import get_db
@@ -16,19 +16,27 @@ router = APIRouter(
 
 ##  ROUTES
 
-@router.get("/", dependencies=[Depends(auth_utils.check_admin_role)])
+@router.get("/foo", response_model=Optional[UserSignup])
+def bar():
+    return;
+
+# @router.get("/", dependencies=[Depends(auth_service.check_admin_role)])
+# def read_root(db: Session = Depends(get_db)):
+#     userList: list[User] = [User.model_validate(user) for user in UserDatabaseService(db).get_all_users()]
+#     return userList
+@router.get("/", response_model=List[User], dependencies=[Depends(auth_service.check_admin_role)])
 def read_root(db: Session = Depends(get_db)):
-    userList: list[User] = [UserOut.model_validate(user) for user in UserDatabaseService(db).get_all_users()]
-    return userList
+    users = UserDatabaseService(db).get_all_users()  # list of ORM User instances
+    return users  # Let FastAPI + Pydantic serialize, with orm_mode=True on User model
 
 @router.get("/me")
-def get_self(current_user: User = Depends(auth_utils.get_current_user)):
+def get_self(current_user: User = Depends(auth_service.get_current_user)):
     if current_user:
         return UserOut.model_validate(current_user)
     raise HTTPException(status_code=404, detail="User not found")
 
 @router.put("/me", response_model=User)
-async def update_user(payload: dict, current_user: User = Depends(auth_utils.get_current_user), db: Session = Depends(get_db)):
+async def update_user(payload: dict, current_user: User = Depends(auth_service.get_current_user), db: Session = Depends(get_db)):
     if current_user == None:
         raise HTTPException(status_code=404, detail="User not found")
     fetchedUser: ORMUser = UserDatabaseService(db).get_by_id(current_user.id)
@@ -52,12 +60,12 @@ async def update_user(payload: dict, current_user: User = Depends(auth_utils.get
     response = JSONResponse(content={"message": f"User {fetchedUser.userName} updated successfully"})
     return response
 
-@router.get("/{userName}", response_model=Optional[User], dependencies=[Depends(auth_utils.check_admin_role)])
+@router.get("/{userName}", response_model=Optional[User], dependencies=[Depends(auth_service.check_admin_role)])
 def query_user(userName: str, db: Session = Depends(get_db)):
     return UserDatabaseService(db).get_by_username(userName)
 
 @router.put("/{userName}", response_model=Optional[User])
-async def update_user(userName: str, payload: dict, current_user: User = Depends(auth_utils.check_admin_role), db: Session = Depends(get_db)):
+async def update_user(userName: str, payload: dict, current_user: User = Depends(auth_service.check_admin_role), db: Session = Depends(get_db)):
     fetchedUser: ORMUser = UserDatabaseService(db).get_by_username(userName)
     if not fetchedUser:
         raise HTTPException(status_code=404, detail="User not found")
@@ -79,7 +87,7 @@ async def update_user(userName: str, payload: dict, current_user: User = Depends
     response = JSONResponse(content={"message": f"User {fetchedUser.userName} updated successfully"})
     return response
 
-@router.delete("/{userName}", dependencies=[Depends(auth_utils.check_admin_role)])
+@router.delete("/{userName}", dependencies=[Depends(auth_service.check_admin_role)])
 def delete_user(userName: str, db: Session = Depends(get_db)):
     fetchedUser: User = UserDatabaseService(db).get_by_username(userName)
     try:
@@ -91,9 +99,11 @@ def delete_user(userName: str, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=Optional[User])
 async def create_user(user: User, db: Session = Depends(get_db)):
+    print(user)
     if UserDatabaseService(db).check_exists(user.userName):
         try:
             new_user = ORMUser(**user.model_dump())
+            print(new_user.birthDate)
             db.add(new_user)
             db.commit()
             db.refresh(new_user)

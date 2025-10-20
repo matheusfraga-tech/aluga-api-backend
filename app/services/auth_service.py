@@ -59,6 +59,18 @@ def authenticate_user(login: Login):
      return fetchedUser
   raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
 
+def get_credentials(request):
+    access_token = handle_auth_method(request, "access_token");
+    
+    try:
+      payload = jwt.decode(access_token, ACCESS_TOKEN_SECRET, algorithms=[ALGORITHM])
+    except (PyJWTError, InvalidTokenError):
+      raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Unauthorized access, please authenticate.")
+    
+    response = JSONResponse(content={"token_content": payload})
+    return response
+
 def perform_login(login: Login):
     user = authenticate_user(login)
 
@@ -72,8 +84,8 @@ def perform_login(login: Login):
             value=access_t,
             httponly=True,  # Secure against XSS
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            samesite="lax",  # Adjust for cross-site if needed
-            secure=False,     # True in production (HTTPS)
+            samesite="None",  # Adjust for cross-site if needed
+            secure=True,     # True in production (HTTPS)
             path="/"
         )
     response.set_cookie(
@@ -81,8 +93,8 @@ def perform_login(login: Login):
             value=refresh_t,
             httponly=True,  # Secure against XSS
             max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60,
-            samesite="lax",  # Adjust for cross-site if needed
-            secure=False,     # True in production (HTTPS)
+            samesite="None",  # Adjust for cross-site if needed
+            secure=True,     # True in production (HTTPS)
             path="/"
         )
     return response;
@@ -91,8 +103,21 @@ def perform_logout(request: Request, current_user = Depends(get_current_user)):
 
   response = JSONResponse(content={"message": "Logout successfully"})
   # Cookies are working
-  response.delete_cookie(key="access_token")
-  response.delete_cookie(key="refresh_token")
+  
+  response.delete_cookie(
+        key="access_token",
+        httponly=True,  # Secure against XSS
+        samesite="None",  # Adjust for cross-site if needed
+        secure=True,     # True in production (HTTPS)
+        path="/"
+        )
+  response.delete_cookie(
+        key="refresh_token",
+        httponly=True,  # Secure against XSS
+        samesite="None",  # Adjust for cross-site if needed
+        secure=True,     # True in production (HTTPS)
+        path="/"
+        )
 
   # For headers
   print("HEADERS: ")
@@ -123,8 +148,8 @@ def perform_refresh(request: Request):
             value=access_t,
             httponly=True,  # Secure against XSS
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            samesite="lax",  # Adjust for cross-site if needed
-            secure=False,     # True in production (HTTPS)
+            samesite="None",  # Adjust for cross-site if needed
+            secure=True,     # True in production (HTTPS)
             path="/"
         )
     response.set_cookie(
@@ -132,8 +157,8 @@ def perform_refresh(request: Request):
             value=refresh_t,
             httponly=True,  # Secure against XSS
             max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60,
-            samesite="lax",  # Adjust for cross-site if needed
-            secure=False,     # True in production (HTTPS)
+            samesite="None",  # Adjust for cross-site if needed
+            secure=True,     # True in production (HTTPS)
             path="/"
         )
     return response;
@@ -151,6 +176,7 @@ def verify_token_access(token: str, credentials_exception):
         payload = jwt.decode(token, ACCESS_TOKEN_SECRET, algorithms=[ALGORITHM])
         token_data = payload
     except (PyJWTError, InvalidTokenError) as e:
+        print(token)
         print("Token error:", e)
         raise credentials_exception
     return token_data
@@ -165,77 +191,16 @@ def create_refresh_token(data: TokenData):
     return encoded_jwt
 
 def handle_auth_method(request: Request, key: str):
+  print(request.cookies)
+  print(request.headers)
   keyValue: str = None;
   if request.headers.get(key) != None:
       keyValue = request.headers.get(key)
       print("header token auth")
   elif request.cookies.get(key) != None:
       keyValue = request.cookies.get(key)
-      print("cookie auth")
+      print("cookie auth", keyValue)
   if not keyValue:
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                       detail="No authentication data found, please authenticate")
   return keyValue
-
-fake_users_db = {
-  "b64c8392-50c1-4dbe-89c5-4a5ad3b6d06b": {
-    "id": "b64c8392-50c1-4dbe-89c5-4a5ad3b6d06b",
-    "userName": "john_doe",
-    "password": "Secure123!",
-    "role": "customer",
-    "birthDate": "1990-06-15T00:00:00",
-    "emailAddress": "john.doe@example.com",
-    "phoneNumber": "+1-123-456-7890",
-    "firstName": "John",
-    "lastName": "Doe",
-    "address": "123 Main St, Springfield, IL 62704"
-  },
-  "fa51299a-bb30-4e3d-9fc3-3f64728a6b64": {
-    "id": "fa51299a-bb30-4e3d-9fc3-3f64728a6b64",
-    "userName": "maria_lee",
-    "password": "Admin!234",
-    "role": "sysAdmin",
-    "birthDate": "1985-09-10T00:00:00",
-    "emailAddress": "maria.lee@example.com",
-    "phoneNumber": "+1-234-567-8901",
-    "firstName": "Maria",
-    "lastName": "Lee",
-    "address": "456 Oak Ave, Chicago, IL 60616"
-  },
-  "9d8032e0-7638-49a2-aab0-f02b8ebee107": {
-    "id": "9d8032e0-7638-49a2-aab0-f02b8ebee107",
-    "userName": "james_wong",
-    "password": "Manager#456",
-    "role": "customer",
-    "birthDate": "1988-03-22T00:00:00",
-    "emailAddress": "james.wong@example.com",
-    "phoneNumber": "+1-345-678-9012",
-    "firstName": "James",
-    "lastName": "Wong",
-    "address": "789 Pine St, Seattle, WA 98101"
-  },
-  "0f2bbbe3-236d-4d83-a502-12a4ad1d219d": {
-    "id": "0f2bbbe3-236d-4d83-a502-12a4ad1d219d",
-    "userName": "emily_nguyen",
-    "password": "Employee789@",
-    "role": "customer",
-    "birthDate": "1992-11-05T00:00:00",
-    "emailAddress": "emily.nguyen@example.com",
-    "phoneNumber": "+1-456-789-0123",
-    "firstName": "Emily",
-    "lastName": "Nguyen",
-    "address": "321 Birch Rd, Austin, TX 73301"
-  },
-  "63d7c168-77cc-4a92-8328-5cf76b79c981": {
-    "id": "63d7c168-77cc-4a92-8328-5cf76b79c981",
-    "userName": "oliver_smith",
-    "password": "Guest$321",
-    "role": "customer",
-    "birthDate": "1995-07-30T00:00:00",
-    "emailAddress": "oliver.smith@example.com",
-    "phoneNumber": "+1-567-890-1234",
-    "firstName": "Oliver",
-    "lastName": "Smith",
-    "address": "654 Cedar Ln, Denver, CO 80202"
-  }
-}
