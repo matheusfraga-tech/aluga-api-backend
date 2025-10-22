@@ -29,7 +29,7 @@ class User(BaseModel):
     )
 
     role: str = Field(
-        ...,
+        default="customer",
         title="Role",
         description="The role assigned to the user (e.g., admin, guest, staff)."
     )
