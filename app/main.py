@@ -1,3 +1,4 @@
+import re
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from datetime import datetime
@@ -16,6 +17,9 @@ from app.database.database import engine
 origins = [
     "http://localhost:8000",
     "http://127.0.0.1:8000"
+     "http://localhost:8081",
+    "http://127.0.0.1:8081",
+    "http://192.168.0.9:8000"
     ]
 
 # Logging estruturado
@@ -28,7 +32,8 @@ app = FastAPI(title="Aluga API")
 # -------------------- Middleware --------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Or use ["*"] for all (not recommended in production)
+      allow_origin_regex= '^https:\/\/[a-zA-Z0-9-]+\.mmar\.dev$',
+    allow_origins=origins,  # Or use ["*"] for all (not recommended in production)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

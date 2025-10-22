@@ -1,11 +1,14 @@
-from typing import Union
+
+from typing import Optional, List
 from pydantic import ValidationError
-from fastapi import APIRouter, Depends, HTTPException
-from ..helpers import auth_utils
-from ..helpers import users_utils
-from ..schemas.user import User
-from ..logic.users import routing as user_routing_logic
-import json
+from fastapi import APIRouter, Depends, HTTPException, status
+from ..services import auth_service
+from ..schemas.user import User, UserOut, UserSignup
+from app.models.user import User as ORMUser
+from sqlalchemy.orm import Session
+from app.database.database import get_db
+from ..services.user_service import UserBusinessRulesService, UserDatabaseService
+from fastapi.responses import JSONResponse
 
 router = APIRouter(
     prefix="/users",
@@ -14,72 +17,99 @@ router = APIRouter(
 
 ##  ROUTES
 
-@router.get("/", dependencies=[Depends(auth_utils.check_admin_role)])
-def read_root():
-    return auth_utils.fake_users_db
+@router.get("/foo", response_model=Optional[UserSignup])
+def bar():
+    return;
 
-@router.get("/me", response_model=User)
-def get_self(current_user: User = Depends(auth_utils.get_current_user)):
-    if current_user != None:
-        return current_user
+# @router.get("/", dependencies=[Depends(auth_service.check_admin_role)])
+# def read_root(db: Session = Depends(get_db)):
+#     userList: list[User] = [User.model_validate(user) for user in UserDatabaseService(db).get_all_users()]
+#     return userList
+@router.get("/", response_model=List[User], dependencies=[Depends(auth_service.check_admin_role)])
+def read_root(db: Session = Depends(get_db)):
+    users = UserDatabaseService(db).get_all_users()  # list of ORM User instances
+    return users  # Let FastAPI + Pydantic serialize, with orm_mode=True on User model
+
+@router.get("/me")
+def get_self(current_user: User = Depends(auth_service.get_current_user)):
+    if current_user:
+        return UserOut.model_validate(current_user)
     raise HTTPException(status_code=404, detail="User not found")
 
 @router.put("/me", response_model=User)
-async def update_user(payload: dict, current_user: User = Depends(auth_utils.get_current_user)):
+async def update_user(payload: dict, current_user: User = Depends(auth_service.get_current_user), db: Session = Depends(get_db)):
     if current_user == None:
         raise HTTPException(status_code=404, detail="User not found")
-    user_routing_logic.handleUpdateConstraints(current_user, current_user, payload)
-    updatedUser: json = users_utils.handle_user_instance_updates(payload, current_user)  
+    fetchedUser: ORMUser = UserDatabaseService(db).get_by_id(current_user.id)
+    if not fetchedUser:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not UserBusinessRulesService.handle_update_constraints(current_user, fetchedUser, payload):
+        raise HTTPException(status_code=422, detail="Unprocessable Entity")
+
+    for key, value in payload.items():
+        if hasattr(fetchedUser, key):
+            setattr(fetchedUser, key, value)
+
     try:
-        validatedUser = User(**updatedUser)
+        _ = User.model_validate(fetchedUser)
     except ValidationError as e:
-        raise HTTPException(
-                status_code=422,
-                detail=e.errors(),
-                headers={"Content-Type": "application/json"}
-            )
+        raise HTTPException(status_code=422, detail=e.errors())
+    
+    db.commit()
+    db.refresh(fetchedUser)
+    response = JSONResponse(content={"message": f"User {fetchedUser.userName} updated successfully"})
+    return response
 
-    newUserDict = {}
-    newUserDict[validatedUser.id] = validatedUser.model_dump()
-    auth_utils.fake_users_db.update(newUserDict)
-    return updatedUser
+@router.get("/{userName}", response_model=Optional[User], dependencies=[Depends(auth_service.check_admin_role)])
+def query_user(userName: str, db: Session = Depends(get_db)):
+    return UserDatabaseService(db).get_by_username(userName)
 
-@router.get("/{userName}", response_model=User, dependencies=[Depends(auth_utils.check_admin_role)])
-def query_user(userName: str):
-    return users_utils.query_user_by_username(userName)
+@router.put("/{userName}", response_model=Optional[User])
+async def update_user(userName: str, payload: dict, current_user: User = Depends(auth_service.check_admin_role), db: Session = Depends(get_db)):
+    fetchedUser: ORMUser = UserDatabaseService(db).get_by_username(userName)
+    if not fetchedUser:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not UserBusinessRulesService.handle_update_constraints(current_user, fetchedUser, payload):
+        raise HTTPException(status_code=422, detail="Unprocessable Entity")
 
-@router.put("/{userName}", response_model=User)
-async def update_user(userName: str, payload: dict, current_user: User = Depends(auth_utils.check_admin_role)):
-##apply strategy based on user role e.g.: admins can change all fields, customers only emailAddress, phoneNumber, address
-#find user
-    fetchedUser: User = users_utils.query_user_by_username(userName)
-#apply strategy
-    user_routing_logic.handleUpdateConstraints(current_user, fetchedUser, payload)
-#update user copy instance
-    updatedUser: json = users_utils.handle_user_instance_updates(payload, fetchedUser)
-#use the updated copy to overwrite db
-    newUserDict = {}
-    key = fetchedUser.id
-    newUserDict[key] = updatedUser
-    auth_utils.fake_users_db.update(newUserDict)
-    return updatedUser
+    for key, value in payload.items():
+        if hasattr(fetchedUser, key):
+            setattr(fetchedUser, key, value)
 
-@router.delete("/{userName}", dependencies=[Depends(auth_utils.check_admin_role)])
-def delete_user(userName: str):
-    fetchedUser: User = users_utils.query_user_by_username(userName)
-    return users_utils.handle_user_delete(fetchedUser);
+    try:
+        _ = User.model_validate(fetchedUser)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors())
+    
+    db.commit()
+    db.refresh(fetchedUser)
+    response = JSONResponse(content={"message": f"User {fetchedUser.userName} updated successfully"})
+    return response
 
-@router.post("/", response_model=User)
-async def create_user(user: User):
-#check username exists in DB
-    for dbUser in auth_utils.fake_users_db.values():
-        if dbUser["userName"] == user.userName:
-            raise HTTPException(status_code=404, detail="User already exists")
-#create user record
-    newUserDict = {}
-    newUserDict[user.id] = json.loads(user.model_dump_json())
-    # print(newUserDict)
-    auth_utils.fake_users_db.update(newUserDict)
-#create primary contact record
-#relate both records
-    return user
+@router.delete("/{userName}", dependencies=[Depends(auth_service.check_admin_role)])
+def delete_user(userName: str, db: Session = Depends(get_db)):
+    fetchedUser: User = UserDatabaseService(db).get_by_username(userName)
+    try:
+        db.delete(fetchedUser)
+        db.commit() 
+    except:
+        raise HTTPException(status_code=422, detail="Unprocessable Entity")
+    return JSONResponse(content={"message": f"{fetchedUser.userName} deleted successfully"}, status_code=status.HTTP_200_OK)
+
+@router.post("/", response_model=Optional[User])
+async def create_user(user: User, db: Session = Depends(get_db)):
+    print(user)
+    if UserDatabaseService(db).check_exists(user.userName):
+        try:
+            new_user = ORMUser(**user.model_dump())
+            print(new_user.birthDate)
+            db.add(new_user)
+            db.commit()
+            db.refresh(new_user)
+        except:
+            raise HTTPException(status_code=422, detail="Unprocessable Entity")    
+        
+    response = JSONResponse(content={"message": f"User {user.userName} created successfully"})
+    return response

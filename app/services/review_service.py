@@ -4,21 +4,26 @@ from typing import List
 
 from app.repositories.review_repository import ReviewRepository
 from app.repositories.hotel_repository import HotelRepository
+from app.repositories.user_repository import UserRepository
 from app.models.review import Review
 from app.schemas.review import ReviewIn, ReviewUpdate, ReviewOut, ReviewUserOut
 from app.schemas.user import User
-from app.helpers.auth_utils import fake_users_db
+
 
 class ReviewService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = ReviewRepository(db)
         self.hotel_repo = HotelRepository()
+        self.user_repo = UserRepository(db)
 
     def _enrich_review(self, review: Review) -> ReviewOut:
-        user_info = fake_users_db.get(review.user_id)
+        # Busca o usuário real do banco
+        user = self.user_repo.get_by_id(review.user_id)
+        user_name = user.userName if user else "Usuário Desconhecido"
+        
         user_data_for_review = ReviewUserOut(
-            user_name=user_info.get("userName") if user_info else "Usuário Desconhecido"
+            user_name=user_name
         )
         return ReviewOut(
             id=review.id, hotel_id=review.hotel_id,

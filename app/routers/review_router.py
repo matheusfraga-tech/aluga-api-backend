@@ -1,6 +1,6 @@
 # app/routers/review_router.py (VERSÃO FINAL - AUTENTICAÇÃO REAL)
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -8,7 +8,7 @@ from app.database import get_db
 from app.services.review_service import ReviewService
 from app.schemas.review import ReviewIn, ReviewUpdate, ReviewOut
 from app.schemas.user import User
-from app.helpers.auth_utils import get_current_user # Autenticação real
+from app.services import auth_service
 
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
 
@@ -22,7 +22,7 @@ def create_review(
     hotel_id: int,
     review_in: ReviewIn,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(auth_service.get_current_user)
 ):
     service = ReviewService(db)
     return service.create_review(hotel_id=hotel_id, current_user=current_user, review_in=review_in)
@@ -32,7 +32,7 @@ def update_review(
     review_id: int,
     review_update: ReviewUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(auth_service.get_current_user)
 ):
     service = ReviewService(db)
     return service.update_review(review_id=review_id, current_user=current_user, review_update=review_update)
@@ -41,7 +41,7 @@ def update_review(
 def delete_review(
     review_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(auth_service.get_current_user)
 ):
     service = ReviewService(db)
     service.delete_review(review_id=review_id, current_user=current_user)
