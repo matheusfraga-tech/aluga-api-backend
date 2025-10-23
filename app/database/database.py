@@ -18,7 +18,7 @@ if not all([USER_DB, USER_PASSWORD, HOST_DB, PORT_DB, DB_NAME]):
     raise ValueError("Variáveis de ambiente do banco não estão configuradas corretamente")
 
 DATABASE_URL = (
-    f"postgresql+psycopg2://{USER_DB}:{USER_PASSWORD}@{HOST_DB}:{PORT_DB}/{DB_NAME}?sslmode={SSL_MODE}"
+    f"postgresql+psycopg2://{USER_DB}:{USER_PASSWORD}@{HOST_DB}:{PORT_DB}/{DB_NAME}?sslmode=disable"
 )
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)

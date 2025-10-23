@@ -7,7 +7,7 @@ from app.models.reserva import Reserva
 from app.models.room import Room
 from app.models.base import Base
 from app.schemas.user import User
-# from app.helpers.auth_utils import get_current_user
+from app.services.auth_service import get_current_user
 from app.schemas.reserva import ReservationCreate, ReservationOut, ReservationUpdate
 from typing import List
 from sqlalchemy.orm import joinedload
@@ -16,10 +16,10 @@ from sqlalchemy.orm import joinedload
 router = APIRouter(prefix="/reservas", tags=["reservas"])
 
 # ------------------- CREATE -------------------
-@router.post("/reservas/")
+@router.post("/")
 def create_reservation(
     reserva_data: ReservationCreate,
-    # current_user = Depends(get_current_user),
+    current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     from app.services.user_service import UserDatabaseService
@@ -33,12 +33,17 @@ def create_reservation(
             raise HTTPException(status_code=400, detail="No users found")
     except:
         raise HTTPException(status_code=400, detail="No users found")
+
+      # Verifica se o quarto existe
+    room = db.query(Room).filter(Room.id == reserva_data.room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail=f"Room with id {reserva_data.room_id} not found")   
     
     nova_reserva = Reserva(
         user_id=current_user.id,
         room_id=reserva_data.room_id,
-        data_checkin=reserva_data.data_checkin,
-        data_checkout=reserva_data.data_checkout
+        data_checkin=reserva_data.date_checkin,
+        data_checkout=reserva_data.date_checkout
     )
     db.add(nova_reserva)
     db.commit()
@@ -89,24 +94,26 @@ def update_reserva(
     reserva_id: str,
     reserva_update: ReservationUpdate,
     db: Session = Depends(get_db),
-    # current_user: User = Depends(get_current_user)
-):
+    ):
     reserva = db.query(Reserva).filter(Reserva.id == reserva_id).first()
-
     if not reserva:
         raise HTTPException(status_code=404, detail="Reservation not found")
 
-    # Atualiza apenas os campos fornecidos
+    # Atualiza datas
     if reserva_update.date_checkin is not None:
         reserva.data_checkin = reserva_update.date_checkin
     if reserva_update.date_checkout is not None:
         reserva.data_checkout = reserva_update.date_checkout
+
+    # Atualiza room_id somente se o quarto existe
     if reserva_update.room_id is not None:
+        room = db.query(Room).filter(Room.id == reserva_update.room_id).first()
+        if not room:
+            raise HTTPException(status_code=404, detail=f"Room with id {reserva_update.room_id} not found")
         reserva.room_id = reserva_update.room_id
 
     db.commit()
     db.refresh(reserva)
-
     return reserva
 
 # ------------------- DELETE -------------------
