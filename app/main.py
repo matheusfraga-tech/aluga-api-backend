@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from datetime import datetime
 from app.database.database import test_connection
-from app.routers import hotels, users, login, amenity_router
+from app.routers import hotels, users, login, amenity_router, booking
 import psycopg2
 import logging
 import time
@@ -30,7 +30,7 @@ app = FastAPI(title="Aluga API")
 # -------------------- Middleware --------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex= '^https:\/\/[a-zA-Z0-9-]+\.mmar\.dev$',
+    allow_origin_regex= '^https://[a-zA-Z0-9-]+\.mmar\.dev$',
     allow_origins=origins,  # Or use ["*"] for all (not recommended in production)
     allow_credentials=True,
     allow_methods=["*"],
@@ -42,6 +42,7 @@ app.include_router(hotels.router, tags=["hotels"])
 app.include_router(users.router, tags=["users"])
 app.include_router(login.router, tags=["auth"])
 app.include_router(amenity_router.router, tags=["amenities"])
+app.include_router(booking.router, tags=["reservations"]) 
 
 # -------------------- Eventos de Startup --------------------
 @app.on_event("startup")

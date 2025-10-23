@@ -5,6 +5,7 @@ from app.models.base import IntPKMixin, hotel_amenities
 from app.database import Base, engine
 from sqlalchemy import DateTime
 from datetime import datetime
+from app.models.booking import Booking
 
 class User(Base):
     

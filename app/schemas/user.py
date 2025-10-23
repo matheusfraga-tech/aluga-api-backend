@@ -1,7 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
-from pydantic import field_validator
 import uuid
 import re
 
@@ -51,7 +50,7 @@ class User(BaseModel):
         ...,
         title="Phone Number",
         description="Valid phone number format (e.g., +1-123-456-7890 or 11988888888).",
-        pattern=re.compile(r"^\s*(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})(: *x(\d+))?\s*$")
+        pattern=re.compile(r"^\s*(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})(?: *x(\d+))?\s*$")
     )
 
     firstName: str = Field(
@@ -82,13 +81,9 @@ class User(BaseModel):
             raise ValueError(f'{value} is greater than today.')
         return value
 
-    class Config:
-        from_attributes = True
-        orm_mode = True
+    class Config: # Mantido Config
+        from_attributes = True 
 
-from pydantic import BaseModel, Field
-from datetime import datetime
-import re
 
 class UserSignup(BaseModel):
     userName: str = Field(
@@ -126,7 +121,7 @@ class UserSignup(BaseModel):
         ...,
         title="Phone Number",
         description="Include country code if needed.",
-        pattern=re.compile(r"^\s*(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})(: *x(\d+))?\s*$"),
+        pattern=re.compile(r"^\s*(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})(?: *x(\d+))?\s*$"),
         json_schema_extra={"format": "string"}
     )
 
@@ -151,7 +146,6 @@ class UserSignup(BaseModel):
         json_schema_extra={"format": "string"}
     )
 
-
     @field_validator('birthDate')
     @classmethod
     def validate_birthdate(cls, value: datetime) -> datetime:
@@ -162,31 +156,28 @@ class UserSignup(BaseModel):
             raise ValueError(f'{value} is greater than today.')
         return value
 
-    class Config:
-        from_attributes = True
-        orm_mode = True
+    class Config: # Mantido Config
+        from_attributes = True  
+
 
 class UserOut(BaseModel):
-
-    id:  str = Field(default_factory=lambda: str(uuid.uuid4()))
-    userName: str = Field(min_length=3, max_length=15) # validade unique
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userName: str = Field(min_length=3, max_length=15)
     role: str
     birthDate: datetime
     emailAddress: str = Field(
         pattern=re.compile(
             r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         )
-    )  # ex: test@test.com
+    )
     phoneNumber: str = Field(
         pattern=re.compile(
-            r"^\s*(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})(: *x(\d+))?\s*$"
+            r"^\s*(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})(?: *x(\d+))?\s*$"
         )
-    )  # ex: 11988888888
+    )
     firstName: str | None = None
     lastName: str | None = None
     address: str | None = None
 
-    class Config:
+    class Config: # Mantido Config
         from_attributes = True
-        orm_mode = True
-
