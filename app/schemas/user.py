@@ -50,8 +50,8 @@ class User(BaseModel):
     phoneNumber: str = Field(
         ...,
         title="Phone Number",
-        description="Valid phone number format (e.g., +1-123-456-7890 or 11988888888).",
-        pattern=re.compile(r"^\s*(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})(: *x(\d+))?\s*$")
+        description="Valid phone number format (e.g., +55 11 98888-8888, 11988888888, +1-123-456-7890).",
+        pattern=re.compile(r"^\s*(?:\+?\d{1,4}\s?)?(?:\(?\d{1,4}\)?\s?)?[\d\s\-\.\(\)]{8,15}\s*$")
     )
 
     firstName: str = Field(
@@ -126,7 +126,7 @@ class UserSignup(BaseModel):
         ...,
         title="Phone Number",
         description="Include country code if needed.",
-        pattern=re.compile(r"^\s*(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})(: *x(\d+))?\s*$"),
+        pattern=re.compile(r"^\s*(?:\+?\d{1,4}\s?)?(?:\(?\d{1,4}\)?\s?)?[\d\s\-\.\(\)]{8,15}\s*$"),
         json_schema_extra={"format": "string"}
     )
 
@@ -179,9 +179,9 @@ class UserOut(BaseModel):
     )  # ex: test@test.com
     phoneNumber: str = Field(
         pattern=re.compile(
-            r"^\s*(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})(: *x(\d+))?\s*$"
+            r"^\s*(?:\+?\d{1,4}\s?)?(?:\(?\d{1,4}\)?\s?)?[\d\s\-\.\(\)]{8,15}\s*$"
         )
-    )  # ex: 11988888888
+    )  # ex: 11988888888, +55 11 98888-8888
     firstName: str | None = None
     lastName: str | None = None
     address: str | None = None
