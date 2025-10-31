@@ -11,6 +11,15 @@ from app.schemas.hotel_filter import HotelFilter
 
 router = APIRouter(prefix="/hotels", tags=["hotels"])
 
+# -------------------- GET ALL HOTELS --------------------
+@router.get("/", response_model=List[HotelDetail])
+def get_all_hotels(db: Session = Depends(get_db)):
+    """
+    Retorna todos os hotéis cadastrados.
+    """
+    service = HotelService(db)
+    return service.get_all_hotels()
+
 # -------------------- SEARCH --------------------
 @router.get("/search")
 def search_hotels(filters: HotelFilter = Depends(), db: Session = Depends(get_db)):

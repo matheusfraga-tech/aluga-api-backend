@@ -98,6 +98,12 @@ class HotelService:
     def delete_hotel(self, hotel_id: int) -> bool:
         return self.repo.delete(self.db, hotel_id)
 
+    def get_all_hotels(self) -> List[Hotel]:
+        """
+        Retorna todos os hotéis cadastrados.
+        """
+        return self.repo.get_all(self.db)
+
     def create_full(self, hotel_in: HotelIn) -> Hotel:
         """
         Cria hotel completo (com quartos, mídias e comodidades), delegando validação para o repository.

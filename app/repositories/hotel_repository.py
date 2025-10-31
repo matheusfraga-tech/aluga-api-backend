@@ -165,6 +165,12 @@ class HotelRepository:
         db.commit()
         return True
 
+    def get_all(self, db: Session) -> List[Hotel]:
+        """
+        Retorna todos os hotéis cadastrados.
+        """
+        return db.query(Hotel).all()
+
     # -------------------- ROOMS --------------------
     def add_rooms(self, db: Session, hotel_id: int, rooms_in: List[RoomIn]) -> Hotel:
         hotel = db.get(Hotel, hotel_id)
