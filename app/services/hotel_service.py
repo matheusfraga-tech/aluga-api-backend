@@ -99,6 +99,7 @@ class HotelService:
         return self.repo.delete(self.db, hotel_id)
 
     def get_all_hotels(self) -> List[HotelCard]:
+        """
         Retorna todos os hotéis cadastrados.
         """
         empty_filters = HotelFilter()
