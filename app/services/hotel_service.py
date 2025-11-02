@@ -9,7 +9,7 @@ from app.models.hotel import Hotel
 from app.models.room import Room
 from app.models.media import Media
 from app.repositories.hotel_repository import HotelRepository
-from app.schemas.hotel import HotelIn
+from app.schemas.hotel import HotelIn, HotelDetail, HotelCard
 from app.schemas.room import RoomIn
 from app.schemas.media import MediaIn
 from app.schemas.hotel_filter import HotelFilter
@@ -98,11 +98,16 @@ class HotelService:
     def delete_hotel(self, hotel_id: int) -> bool:
         return self.repo.delete(self.db, hotel_id)
 
-    def get_all_hotels(self) -> List[Hotel]:
-        """
+    def get_all_hotels(self) -> List[HotelCard]:
         Retorna todos os hotéis cadastrados.
         """
-        return self.repo.get_all(self.db)
+        empty_filters = HotelFilter()
+
+        page_result = self.repo.search(self.db, empty_filters)
+        
+        hotels = [item for item in page_result.items] 
+        
+        return hotels
 
     def create_full(self, hotel_in: HotelIn) -> Hotel:
         """
