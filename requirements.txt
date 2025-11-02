@@ -5,3 +5,4 @@ python-dotenv           # Carrega variáveis de ambiente do arquivo .env
 SQLAlchemy              # ORM para banco de dados
 psycopg2-binary         # Driver PostgreSQL para SQLAlchemy
 passlib[bcrypt]         # Hash de senhas (bcrypt)
+alembic                 # Versionamento de migrations

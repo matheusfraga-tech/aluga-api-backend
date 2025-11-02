@@ -1,25 +1,58 @@
-from fastapi import APIRouter, HTTPException, status, Depends
-from pydantic import BaseModel
-from .. import dependencies
+from fastapi import APIRouter, Request
+from ..services import auth_service 
+from ..schemas.login import Login
+import json
 
 router = APIRouter(
-    prefix="/login",
     tags=["login"]
 )
-class Login(BaseModel):
-  userName: str
-  password: str
-    
-@router.post('/')
-def performLogin(login: Login):
-  print(login)
-  user = dependencies.authenticate_user(login.userName, login.password)
-  if not user:
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid username or password")
-  access_token = dependencies.create_access_token(data={"config": user})
-  return dependencies.Token(access_token=access_token, token_type="bearer")
 
-@router.get("/protected")
-def protected_route(current_user: str = Depends(dependencies.get_current_user)):
-    return current_user
+responses_login: json = {
+  200: {
+    "content": {
+      "application/json": {
+        "example": {
+          "message": "Login successful",
+          "token_content": {
+            "access_token": "[access_token value]",
+            "refresh_token": "[access_token value]",
+            "token_role": "bearer"
+          }
+        }
+      }
+    }
+  }
+}
+
+responses_refresh: json = {
+  200: {
+    "content": {
+      "application/json": {
+        "example": {
+          "message": "Token refreshed successfully",
+          "token_content": {
+            "access_token": "[access_token value]",
+            "refresh_token": "[access_token value]",
+            "token_role": "bearer"
+          }
+        }
+      }
+    }
+  }
+}
+
+@router.post('/login', responses=responses_login)
+def perform_login(login: Login):
+  return auth_service.perform_login(login)
+
+@router.get('/credentials')
+def get_credentials(request: Request):
+  return auth_service.get_credentials(request)
+
+@router.post("/logout", responses=responses_refresh)
+def perform_logout(request: Request):
+  return auth_service.perform_logout(request)
+
+@router.post("/refresh", responses=responses_refresh)
+def refresh_token(request: Request):
+  return auth_service.perform_refresh(request)
