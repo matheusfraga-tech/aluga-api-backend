@@ -46,3 +46,8 @@ def delete_review(
     service = ReviewService(db)
     service.delete_review(review_id=review_id, current_user=current_user)
     return None
+
+@router.get("/", response_model=List[ReviewOut])
+def get_all_reviews(db: Session = Depends(get_db)):
+    service = ReviewService(db)
+    return service.get_all_reviews()

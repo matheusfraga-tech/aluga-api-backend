@@ -30,3 +30,6 @@ class ReviewRepository:
     def delete(self, db_review: Review) -> None:
         self.db.delete(db_review)
         self.db.commit()
+
+    def get_all(self) -> List[Review]:
+        return self.db.query(Review).all()

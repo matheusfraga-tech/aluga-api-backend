@@ -69,3 +69,7 @@ class ReviewService:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
             
         self.repo.delete(db_review)
+
+    def get_all_reviews(self) -> List[ReviewOut]:
+        raw_reviews = self.repo.get_all()
+        return [self._enrich_review(review) for review in raw_reviews]
