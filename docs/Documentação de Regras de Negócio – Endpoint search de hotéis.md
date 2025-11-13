@@ -311,68 +311,72 @@ Padronizar categorias de quartos com base **na quantidade de leitos**, facilitan
 
 ## 6️⃣ Detalhamento de `stars` e `popularity`
 
-### 6.1 Stars
+### 6.1 Stars (Média de Avaliações)
 
-- **Objetivo:**  
-Exibir uma **representação visual da qualidade do hotel** (0–5 estrelas) no frontend.
-
-- **Como calcular:**
-
-- É o **rating médio** direto das avaliações do usuário, que já estão na escala de 1 a 5.
-
-- Fórmula sugerida:
-
-
-```python
-calculated_stars = round(avg_rating_result, 1)
-```
-
-- **Regras de negócio:**
-
-- **Atualizado** quando novas avaliações são feitas (criação, atualização ou exclusão).
-
-- Serve apenas como **indicador visual** da qualidade do hotel, não impacta diretamente a lógica de ordenação complexa.
-
+- **Objetivo:** Exibir uma **representação visual da qualidade do hotel** (escala 0–5 estrelas) no frontend.
+    
+- **Como calcular:** É a **média aritmética** direta das notas de avaliações (`rating`) dos usuários.
+    
+- Fórmula na Implementação:
+    
+    $$\text{Stars} = \text{Arredondar}(\frac{\sum \text{rating}}{\text{Nº Total de Reviews}}, 1)$$
+    
+    Python
+    
+    ```
+    calculated_stars = round(avg_rating_result, 1)
+    ```
+    
+- **Regras de Negócio:**
+    
+    - **Atualizado** imediatamente quando novas avaliações são feitas, atualizadas ou excluídas.
+        
+    - Serve como **indicador visual** da qualidade do hotel, não é o fator principal na ordenação complexa.
+        
 
 ---
 
-### 6.2 Popularity
+### 6.2 Popularity (Métrica de Engajamento e Relevância)
 
-- **Objetivo:**  
-Indicar **quão procurado ou relevante** o hotel é.
-
-- **Como calcular:**
-
-- Baseado em **reservas recentes**, **avaliações positivas**, **cliques ou acessos**.
-
-- Exemplo de fórmula ponderada:
-
-
-```text
-popularity_score = 0.5 * bookings_last_30_days + 0.3 * avg_review_score + 0.2 * page_views
-```
-
-- **Regras de negócio:**
-
-- Diferente de `stars`, reflete **demanda e engajamento**, não apenas qualidade.
-
-- Pode ser atualizado em tempo real ou em batch diário.
-
-- Usado principalmente para **ordenar resultados** e dar destaque a hotéis populares.
-
+- **Objetivo:** Indicar **quão procurado e relevante** o hotel é, refletindo sua demanda e engajamento.
+    
+- **Como calcular:** É uma pontuação ponderada que combina **reservas recentes**, o **volume de reviews** e a **média de estrelas** (`stars`).
+    
+- Fórmula na Implementação:
+    
+    $$\text{Popularidade} = (0.5 \times \text{Bookings}_{30d}) + (0.3 \times \text{Total Reviews}) + (0.2 \times \text{Stars})$$
+    
+    Python
+    
+    ```
+    popularity_score = round(
+        (0.5 * bookings_count) + 
+        (0.3 * total_reviews) + 
+        (0.2 * stars_score), 
+        1
+    )
+    ```
+    
+- **Regras de Negócio:**
+    
+    - Diferente de `stars`, reflete **demanda e engajamento**, não apenas qualidade.
+        
+    - O cálculo é ativado a cada nova **reserva** ou **review** feita/atualizada.
+        
+    - Usado principalmente para **ordenar e destacar resultados** na busca, priorizando hotéis ativos.
+        
 
 ---
 
 ### 6.3 Diferença prática entre `stars` e `popularity`
 
-|Aspecto|Stars|Popularity|
+|**Aspecto**|**Stars**|**Popularity**|
 |---|---|---|
-|Fonte|Avaliações de usuários|Reservas, reviews, acessos|
-|Escala|0–5 (visual)|Float ou int interno|
-|Atualização|Após cada avaliação|Dinâmica, diária ou em tempo real|
-|Uso na interface|Visual, exibição de estrelas|Ordenação, destaque de hotéis populares|
-|Dependência de dados|Só avaliações|Avaliações + reservas + cliques|
-|Função principal|Orientar visualmente sobre qualidade|Indicar relevância/demanda do hotel|
+|**Fonte**|Apenas a **nota** das avaliações (rating).|**Volume** de Reviews + **Média** de Reviews + **Bookings Recentes**.|
+|**Escala**|0–5 (Visual).|Métrica **interna** (Float), sem limite máximo prático.|
+|**Foco**|Qualidade percebida.|Relevância e demanda (engajamento).|
+|**Atualização**|Após cada evento de Review.|Após cada evento de Review **ou** Booking.|
+|**Uso na Interface**|Visual (exibição de estrelas) e filtro de qualidade.|**Ordenação** (ranking) e destaque de hotéis ativos.|
 
 ---
 
