@@ -318,20 +318,20 @@ Exibir uma **representação visual da qualidade do hotel** (0–5 estrelas) no 
 
 - **Como calcular:**
 
-- Normalizado a partir de avaliações (1–10 → 0–5).
+- É o **rating médio** direto das avaliações do usuário, que já estão na escala de 1 a 5.
 
 - Fórmula sugerida:
 
 
 ```python
-stars = round((average_rating / 10) * 5, 1)
+calculated_stars = round(avg_rating_result, 1)
 ```
 
 - **Regras de negócio:**
 
-- Atualizado quando novas avaliações são feitas.
+- **Atualizado** quando novas avaliações são feitas (criação, atualização ou exclusão).
 
-- Serve apenas como **indicador visual**, não impacta diretamente a lógica de ordenação complexa.
+- Serve apenas como **indicador visual** da qualidade do hotel, não impacta diretamente a lógica de ordenação complexa.
 
 
 ---
