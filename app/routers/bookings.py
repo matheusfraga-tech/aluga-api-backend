@@ -9,6 +9,7 @@ from app.services.auth_service import get_current_user
 from app.schemas.booking import BookingCreate, BookingOut, BookingUpdate, BookingWithDetails
 from typing import List
 from sqlalchemy.orm import joinedload
+from app.services.hotel_metrics_service import HotelMetricsService 
 
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -20,6 +21,8 @@ def create_booking(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    metrics_service = HotelMetricsService(db) 
+    
     # Verifica quarto
     room = db.query(Room).filter(Room.id == booking_data.room_id).first()
     if not room:
@@ -29,10 +32,12 @@ def create_booking(
     hotel = db.query(Hotel).filter(Hotel.id == booking_data.hotel_id).first()
     if not hotel:
         raise HTTPException(status_code=404, detail=f"Hotel {booking_data.hotel_id} não encontrado")
+    
+    hotel_id = booking_data.hotel_id 
 
     new_booking = Booking(
         user_id=current_user.id,
-        hotel_id=booking_data.hotel_id,
+        hotel_id=hotel_id,
         room_id=booking_data.room_id,
         check_in=booking_data.check_in,
         check_out=booking_data.check_out,
@@ -42,6 +47,9 @@ def create_booking(
     db.add(new_booking)
     db.commit()
     db.refresh(new_booking)
+
+    # Dispara o recálculo da popularidade
+    metrics_service.calculate_and_update_metrics(hotel_id)
 
     # Retorna com hotel e quarto carregados
     return db.query(Booking)\
@@ -150,6 +158,8 @@ def delete_booking(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    metrics_service = HotelMetricsService(db)
+
     booking = (
         db.query(Booking)
         .filter(Booking.id == booking_id, Booking.user_id == current_user.id)
@@ -158,6 +168,12 @@ def delete_booking(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    hotel_id = booking.hotel_id
+    
     db.delete(booking)
     db.commit()
+    
+    # Dispara o recálculo da popularidade
+    metrics_service.calculate_and_update_metrics(hotel_id)
+    
     return {"message": f"Booking {booking_id} deleted successfully"}

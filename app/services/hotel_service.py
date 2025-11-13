@@ -139,7 +139,7 @@ class HotelService:
 
     def _get_thumbnail(self, hotel: Hotel) -> Optional[str]:
         if hotel.media:
-            images = [m for m in hotel.media if m.type == "image"]
+            images = [m for m in hotel.media if m.kind == "image"]
             return images[0].url if images else None
         return None
 
