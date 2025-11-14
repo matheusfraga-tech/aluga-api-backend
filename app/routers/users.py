@@ -91,10 +91,13 @@ async def update_user(userName: str, payload: dict, current_user: User = Depends
 @router.delete("/{userName}", dependencies=[Depends(auth_service.check_admin_role)])
 def delete_user(userName: str, db: Session = Depends(get_db)):
     fetchedUser: User = UserDatabaseService(db).get_by_username(userName)
+    print("\n",fetchedUser.userName,"\n")
+    # prob alembic issue due to cascading
     try:
         db.delete(fetchedUser)
         db.commit() 
-    except:
+    except Exception as e:
+        print(e)
         raise HTTPException(status_code=422, detail="Unprocessable Entity")
     return JSONResponse(content={"message": f"{fetchedUser.userName} deleted successfully"}, status_code=status.HTTP_200_OK)
 

@@ -6,5 +6,6 @@ class Token(BaseModel):
     token_role: str
 
 class TokenData(BaseModel):
+    userName: str
     id: str
     role: str
