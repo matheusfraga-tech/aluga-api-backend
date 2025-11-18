@@ -138,8 +138,8 @@ def perform_refresh(request: Request):
     except (PyJWTError, InvalidTokenError):
       raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                         detail="Unauthorized access, please authenticate.")
-    access_t = create_access_token(TokenData(id=user["id"], role=user["role"]))
-    refresh_t = create_refresh_token(TokenData(id=user["id"], role=user["role"]))
+    access_t = create_access_token(TokenData(id=user["id"], role=user["role"], userName=user["userName"]))
+    refresh_t = create_refresh_token(TokenData(id=user["id"], role=user["role"], userName=user["userName"]))
     tokenContent = Token(access_token=access_t, refresh_token=refresh_t, token_role="bearer")
 
     response = JSONResponse(content={"message": "Token refreshed successfully", "token_content": tokenContent.model_dump()})
