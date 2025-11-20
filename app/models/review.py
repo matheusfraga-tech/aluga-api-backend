@@ -1,6 +1,6 @@
 from __future__ import annotations
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Float, Integer, Text, ForeignKey
+from sqlalchemy import Float, Integer, Text, ForeignKey, String
 from app.models.base import Base, IntPKMixin
 
 class Review(IntPKMixin, Base):
