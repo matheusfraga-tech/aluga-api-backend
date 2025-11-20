@@ -8,8 +8,6 @@ import psycopg2
 import logging
 import time
 from fastapi.middleware.cors import CORSMiddleware
-from app.database.database import engine
-
 
 # -------------------- Configurações --------------------
 
@@ -32,7 +30,7 @@ app = FastAPI(title="Aluga API")
 # -------------------- Middleware --------------------
 app.add_middleware(
     CORSMiddleware,
-      allow_origin_regex= '^https:\/\/[a-zA-Z0-9-]+\.mmar\.dev$',
+    allow_origin_regex= '^https:\/\/[a-zA-Z0-9-]+\.mmar\.dev$',
     allow_origins=origins,  # Or use ["*"] for all (not recommended in production)
     allow_credentials=True,
     allow_methods=["*"],

@@ -41,7 +41,7 @@ class UserBusinessRulesService:
       case "customer":
         return ["emailAddress", "phoneNumber", "address"]
       case "sysAdmin":
-        return ["role", "birthDate", "emailAddress", "phoneNumber", "address", "password", "userName", "password", "firstName", "lastName"]
+        return ["role", "birthDate", "emailAddress", "phoneNumber", "address", "password", "userName"]
       case _:
         return []
 
