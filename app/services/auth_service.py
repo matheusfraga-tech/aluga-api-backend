@@ -74,8 +74,8 @@ def get_credentials(request):
 def perform_login(login: Login):
     user = authenticate_user(login)
 
-    access_t = create_access_token(TokenData(id=user.id, role=user.role))
-    refresh_t  = create_refresh_token (TokenData(id=user.id, role=user.role)) 
+    access_t = create_access_token(TokenData(id=user.id, role=user.role, userName=user.userName))
+    refresh_t  = create_refresh_token (TokenData(id=user.id, role=user.role, userName=user.userName)) 
     tokenContent = Token(access_token=access_t, refresh_token=refresh_t, token_role="bearer")
     
     response = JSONResponse(content={"message": "Login successful", "token_content": tokenContent.model_dump()})
