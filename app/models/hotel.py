@@ -51,4 +51,3 @@ class Hotel(IntPKMixin, Base):
         cascade="all, delete-orphan",
         lazy="selectin"
     )
-

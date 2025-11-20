@@ -1,13 +1,14 @@
 from __future__ import annotations
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Text, Float
-from app.models.base import IntPKMixin, hotel_amenities
-from app.database import Base, engine
-from sqlalchemy import DateTime
+from sqlalchemy import String, DateTime
 from datetime import datetime
+from .base import Base
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .booking import Booking
 
 class User(Base):
-    
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, nullable=False, index=True)
@@ -20,5 +21,6 @@ class User(Base):
     firstName: Mapped[str] = mapped_column(String(160), nullable=False, index=True)
     lastName: Mapped[str] = mapped_column(String(160), nullable=False, index=True)
     address: Mapped[str] = mapped_column(String(160), nullable=False, index=True)
-
-Base.metadata.create_all(bind=engine)
+    
+    # Relacionamento com bookings
+    bookings: Mapped[list["Booking"]] = relationship("Booking", back_populates="user")

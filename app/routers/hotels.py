@@ -4,12 +4,22 @@ from sqlalchemy.orm import Session
 
 from app.database.database import get_db
 from app.services.hotel_service import HotelService
-from app.schemas.hotel import HotelIn, HotelDetail
+from app.schemas.hotel import HotelIn, HotelDetail, HotelCard
 from app.schemas.room import RoomIn
 from app.schemas.media import MediaIn
 from app.schemas.hotel_filter import HotelFilter
 
 router = APIRouter(prefix="/hotels", tags=["hotels"])
+
+# -------------------- GET ALL HOTELS --------------------
+@router.get("/", response_model=List[HotelCard])
+def get_all_hotels(db: Session = Depends(get_db)):
+    """
+    Retorna todos os hotéis cadastrados.
+    """
+    service = HotelService(db)
+    
+    return service.get_all_hotels()
 
 # -------------------- SEARCH --------------------
 @router.get("/search")

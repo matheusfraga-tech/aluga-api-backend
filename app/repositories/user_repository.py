@@ -13,4 +13,3 @@ class UserRepository:
   
   def get_all_users(self) -> User | None:
       return self.db.query(User).all()
-

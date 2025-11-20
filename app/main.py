@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from datetime import datetime
 from app.database.database import test_connection
-from app.routers import hotels, users, login, amenity_router
+from app.routers import hotels, users, login, amenity_router, review_router, bookings
 import psycopg2
 import logging
 import time
@@ -42,6 +42,8 @@ app.include_router(hotels.router, tags=["hotels"])
 app.include_router(users.router, tags=["users"])
 app.include_router(login.router, tags=["auth"])
 app.include_router(amenity_router.router, tags=["amenities"])
+app.include_router(review_router.router)
+app.include_router(bookings.router)
 
 # -------------------- Eventos de Startup --------------------
 @app.on_event("startup")
