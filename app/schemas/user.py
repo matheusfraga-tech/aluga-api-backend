@@ -24,7 +24,6 @@ class User(BaseModel):
         ...,
         title="Password",
         description="Password must be at least 8 characters long, contain at least one letter, one number, and one special character.",
-        pattern=re.compile(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$"),
         json_schema_extra={"format": "password"}
     )
 
@@ -44,14 +43,12 @@ class User(BaseModel):
         ...,
         title="Email Address",
         description="Valid email address format (e.g., user@example.com).",
-        pattern=re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
     )
 
     phoneNumber: str = Field(
         ...,
         title="Phone Number",
         description="Valid phone number format (e.g., +55 11 98888-8888, 11988888888, +1-123-456-7890).",
-        pattern=re.compile(r"^\s*(?:\+?\d{1,4}\s?)?(?:\(?\d{1,4}\)?\s?)?[\d\s\-\.\(\)]{8,15}\s*$")
     )
 
     firstName: str = Field(
@@ -72,6 +69,17 @@ class User(BaseModel):
         description="User's address. Can be left blank."
     )
 
+    @field_validator("password")
+    def validate_password(cls, v):
+        pattern = re.compile(
+            r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$"
+        )
+        if not pattern.match(v):
+            raise ValueError(
+                "Passwords MUST HAVE 8 chars, include a letter, number & symbol."
+            )
+        return v
+
     @field_validator('birthDate')
     @classmethod
     def validate_birthdate(cls, value: datetime) -> datetime:
@@ -81,6 +89,30 @@ class User(BaseModel):
         if value.date() > date.today():
             raise ValueError(f'{value} is greater than today.')
         return value
+    
+    @field_validator('emailAddress')
+    @classmethod
+    def validate_email(cls, v):
+        pattern = re.compile(
+            r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+        )
+        if not pattern.match(v):
+            raise ValueError(
+                "Email MUST be in the format email@example.xxx."
+            )
+        return v
+    
+    @field_validator('phoneNumber')
+    @classmethod
+    def validate_phoneNumber(cls, v):
+        pattern = re.compile(
+            r"^\s*(?:\+?\d{1,4}\s?)?(?:\(?\d{1,4}\)?\s?)?[\d\s\-\.\(\)]{8,15}\s*$"
+        )
+        if not pattern.match(v):
+            raise ValueError(
+                "Phone number format is invalid."
+            )
+        return v
 
     class Config:
         from_attributes = True
