@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional # Importe Optional se for usar id para update
 from app.schemas.amenity import AmenityOut, AmenityIn
 
 # -------------------- SAÍDA --------------------
@@ -22,8 +22,8 @@ class RoomIn(BaseModel):
     capacity: int
     base_price: float
     total_units: int
-    amenities: List[AmenityIn] = []
+    
+    amenities: List[int] = [] 
 
     class Config:
         from_attributes = True
-
