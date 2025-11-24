@@ -3,24 +3,26 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from datetime import datetime
 from app.database.database import test_connection
-from app.routers import hotels, users, login, amenity_router, review_router, reserva
+from app.routers import hotels, users, login, amenity_router, review_router, bookings
 import psycopg2
 import logging
 import time
 from fastapi.middleware.cors import CORSMiddleware
 from app.database.database import engine
 
-
 # -------------------- Configurações --------------------
 
-# -------------------- CORS --------------------
+# Lista de origens permitidas (CORS)
 origins = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "http://localhost:8081",
     "http://127.0.0.1:8081",
-    "http://192.168.0.9:8000"
-    ]
+    "http://192.168.0.9:8000",
+    # CORREÇÕES: Adicionando a porta padrão do Expo Web
+    "http://localhost:8082",
+    "http://127.0.0.1:8082",
+]
 
 # Logging estruturado
 logger = logging.getLogger("aluga-api")
@@ -32,8 +34,8 @@ app = FastAPI(title="Aluga API")
 # -------------------- Middleware --------------------
 app.add_middleware(
     CORSMiddleware,
-      allow_origin_regex= '^https:\/\/[a-zA-Z0-9-]+\.mmar\.dev$',
-    allow_origins=origins,  # Or use ["*"] for all (not recommended in production)
+    allow_origin_regex= '^https:\/\/[a-zA-Z0-9-]+\.mmar\.dev$',
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,16 +47,11 @@ app.include_router(users.router, tags=["users"])
 app.include_router(login.router, tags=["auth"])
 app.include_router(amenity_router.router, tags=["amenities"])
 app.include_router(review_router.router)
-app.include_router(reserva.router)
+app.include_router(bookings.router)
 
 # -------------------- Eventos de Startup --------------------
 @app.on_event("startup")
 def on_startup():
-    """
-    Evento de inicialização da API:
-    - Testa a conexão com o banco
-    - Loga versão e status
-    """
     try:
         conn_info = test_connection()
         logger.info(f"Conectado ao Postgres: {conn_info}")
@@ -64,14 +61,6 @@ def on_startup():
 # -------------------- Healthcheck --------------------
 @app.get("/health", tags=["Health"])
 def healthcheck():
-    """
-    Healthcheck da API:
-    - Status da API
-    - Status do banco
-    - Latência do banco
-    - Mensagens detalhadas
-    - Timestamp
-    """
     result = {
         "api_status": "ok",
         "db_status": "unknown",

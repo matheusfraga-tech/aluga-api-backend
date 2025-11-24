@@ -1,4 +1,3 @@
-
 from typing import Optional, List
 from pydantic import ValidationError
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.database.database import get_db
 from ..services.user_service import UserBusinessRulesService, UserDatabaseService
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 
 router = APIRouter(
     prefix="/users",
@@ -54,7 +54,7 @@ async def update_user(payload: dict, current_user: User = Depends(auth_service.g
     try:
         _ = User.model_validate(fetchedUser)
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=e.errors())
+        raise HTTPException(status_code=422, detail=jsonable_encoder(e.errors()))
     
     db.commit()
     db.refresh(fetchedUser)
@@ -80,13 +80,12 @@ async def update_user(userName: str, payload: dict, current_user: User = Depends
 
     try:
         _ = User.model_validate(fetchedUser)
+        db.commit()
+        db.refresh(fetchedUser)
+        response = JSONResponse(content={"message": f"User {fetchedUser.userName} updated successfully"})
+        return response
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=e.errors())
-    
-    db.commit()
-    db.refresh(fetchedUser)
-    response = JSONResponse(content={"message": f"User {fetchedUser.userName} updated successfully"})
-    return response
+        raise HTTPException(status_code=422,detail=jsonable_encoder(e.errors()))
 
 @router.delete("/{userName}", dependencies=[Depends(auth_service.check_admin_role)])
 def delete_user(userName: str, db: Session = Depends(get_db)):

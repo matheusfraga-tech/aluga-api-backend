@@ -6,7 +6,7 @@ from .base import Base
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .reserva import Reserva
+    from .booking import Booking
 
 class User(Base):
     __tablename__ = "users"
@@ -22,3 +22,5 @@ class User(Base):
     lastName: Mapped[str] = mapped_column(String(160), nullable=False, index=True)
     address: Mapped[str] = mapped_column(String(160), nullable=False, index=True)
     
+    # Relacionamento com bookings
+    bookings: Mapped[list["Booking"]] = relationship("Booking", back_populates="user")
