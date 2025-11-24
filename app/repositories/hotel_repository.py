@@ -39,9 +39,9 @@ class HotelRepository:
         """
         # Query base
         query = db.query(Hotel).options(
-            joinedload(Hotel.rooms),
-            joinedload(Hotel.media),
-            joinedload(Hotel.amenities)
+        joinedload(Hotel.rooms).joinedload(Room.amenities), 
+        joinedload(Hotel.media),
+        joinedload(Hotel.amenities)
         ).filter(Hotel.id == hotel_id)
 
         # Subquery de preço mínimo disponível
@@ -104,8 +104,9 @@ class HotelRepository:
         db.commit()
         db.refresh(hotel)
 
-        # -------------------- Rooms --------------------
+    # -------------------- Rooms --------------------
         for r in hotel_in.rooms:
+            # 1. Cria o objeto Room
             room = Room(
                 hotel_id=hotel.id,
                 name=r.name,
@@ -115,6 +116,23 @@ class HotelRepository:
                 total_units=r.total_units
             )
             db.add(room)
+
+            # --- Adiciona Amenities ao Quarto ---
+            
+            # Tenta extrair os IDs
+            if r.amenities and hasattr(r.amenities[0], 'id'):
+                room_amenity_ids = [a.id for a in r.amenities]
+            # Se for List[int]:
+            elif r.amenities and isinstance(r.amenities[0], int):
+                room_amenity_ids = r.amenities
+            else:
+                room_amenity_ids = []
+            
+            # 2. Busca e anexa as Amenities ORM
+            if room_amenity_ids:
+                amenities = db.query(Amenity).filter(Amenity.id.in_(room_amenity_ids)).all()
+                room.amenities.extend(amenities)
+            # -----------------------------------------------
 
         # -------------------- Media --------------------
         for m in hotel_in.media:
@@ -127,8 +145,17 @@ class HotelRepository:
 
         # -------------------- Amenities --------------------
         if hotel_in.amenities:
-            amenities = db.query(Amenity).filter(Amenity.id.in_(hotel_in.amenities)).all()
-            hotel.amenities.extend(amenities)
+            # Assumindo que aqui a entrada é List[int] ou List[AmenityIn]
+            if hotel_in.amenities and hasattr(hotel_in.amenities[0], 'id'):
+                hotel_amenity_ids = [a.id for a in hotel_in.amenities]
+            elif hotel_in.amenities and isinstance(hotel_in.amenities[0], int):
+                hotel_amenity_ids = hotel_in.amenities
+            else:
+                hotel_amenity_ids = []
+                
+            if hotel_amenity_ids:
+                amenities = db.query(Amenity).filter(Amenity.id.in_(hotel_amenity_ids)).all()
+                hotel.amenities.extend(amenities)
 
         db.commit()
         db.refresh(hotel)
@@ -142,15 +169,117 @@ class HotelRepository:
         if not hotel:
             return None
 
-        # Se latitude, longitude ou cidade forem alteradas, valida proximidade
+        # 1. Validação de Proximidade (Mantida)
         if any(getattr(hotel_in, field) is not None for field in ("latitude", "longitude", "city")):
             lat = hotel_in.latitude if hotel_in.latitude is not None else hotel.latitude
             lng = hotel_in.longitude if hotel_in.longitude is not None else hotel.longitude
             city = hotel_in.city if hotel_in.city is not None else hotel.city
             self._validate_proximity(db, lat, lng, city, exclude_id=hotel_id)
 
+        # IDs dos quartos existentes que DEVEM ser mantidos
+        room_ids_to_keep = [] 
+
         for field, value in hotel_in.dict(exclude_unset=True).items():
-            setattr(hotel, field, value)
+            
+            # 2. Tratamento de AMENITIES do HOTEL (CORRIGIDO)
+            if field == "amenities" and value is not None:
+                hotel.amenities.clear()
+                
+                # Adaptação: Extrai IDs, aceitando INT ou DICT para corrigir 'AttributeError: 'int' object has no attribute 'get''
+                amenity_ids = []
+                for a in value:
+                    if isinstance(a, int):
+                        amenity_ids.append(a)
+                    elif isinstance(a, dict) and a.get('id') is not None:
+                        amenity_ids.append(a.get('id'))
+                
+                if amenity_ids:
+                    amenities = db.query(Amenity).filter(Amenity.id.in_(amenity_ids)).all()
+                    hotel.amenities.extend(amenities)
+
+            # 3. Tratamento de MEDIA (Mantido: deletar e recriar)
+            elif field == "media" and value is not None:
+                db.query(Media).filter(Media.hotel_id == hotel_id).delete(synchronize_session=False)
+                new_media = [
+                    Media(hotel_id=hotel_id, url=m['url'], kind=m['kind'] or "default")
+                    for m in value
+                ]
+                hotel.media.extend(new_media)
+                
+            # 4. Tratamento de ROOMS (CRIAÇÃO/ATUALIZAÇÃO)
+            elif field == "rooms" and value is not None:
+                for room_data in value:
+                    room_id = room_data.get('id')
+                    
+                    # 4.1. Extração de IDs das Amenities do QUARTO (CORRIGIDO)
+                    room_amenity_ids = []
+                    for a in room_data.get('amenities', []):
+                        if isinstance(a, int):
+                            room_amenity_ids.append(a)
+                        elif isinstance(a, dict) and a.get('id') is not None:
+                            room_amenity_ids.append(a.get('id'))
+
+                    
+                    if room_id is not None:
+                        # UPDATE: Busca o quarto existente
+                        existing_room = db.get(Room, room_id)
+                        if existing_room:
+                            room_ids_to_keep.append(room_id)
+                            
+                            # Atualiza campos simples do quarto
+                            for room_field, room_value in room_data.items():
+                                if room_field not in ["id", "amenities"]:
+                                    setattr(existing_room, room_field, room_value)
+                            
+                            # Atualiza AMENITIES do QUARTO
+                            existing_room.amenities.clear()
+                            if room_amenity_ids:
+                                room_amenities = db.query(Amenity).filter(Amenity.id.in_(room_amenity_ids)).all()
+                                existing_room.amenities.extend(room_amenities)
+                                
+                            # FORÇA O FLUSH: Garante que as mudanças no Many-to-Many sejam gravadas
+                            db.flush() 
+
+                    else:
+                        # CREATE: Cria um novo quarto se 'id' for None
+                        new_room = Room(
+                            hotel_id=hotel_id,
+                            name=room_data['name'],
+                            room_type=room_data['room_type'],
+                            capacity=room_data['capacity'],
+                            base_price=room_data['base_price'],
+                            total_units=room_data['total_units']
+                        )
+                        db.add(new_room)
+                        db.flush() 
+
+                        if room_amenity_ids:
+                            room_amenities = db.query(Amenity).filter(Amenity.id.in_(room_amenity_ids)).all()
+                            new_room.amenities.extend(room_amenities)
+                        
+                        room_ids_to_keep.append(new_room.id)
+
+
+            # 5. Tratamento de campos simples (name, description, city, etc.)
+            elif field not in ["amenities", "media", "rooms"]:
+                setattr(hotel, field, value)
+
+        # 6. DELETE: Remove quartos que não estão na lista de entrada
+        if hotel_in.rooms is not None:
+            # Seleciona IDs de quartos do hotel que NÃO estão na lista 'room_ids_to_keep'
+            room_ids_to_delete = db.query(Room.id).filter(
+                Room.hotel_id == hotel_id,
+                Room.id.notin_(room_ids_to_keep)
+            ).all()
+
+            if room_ids_to_delete:
+                ids_to_delete = [r[0] for r in room_ids_to_delete]
+                # Deleta os quartos (e suas dependências, se houver cascade)
+                db.query(Room).filter(Room.id.in_(ids_to_delete)).delete(synchronize_session=False)
+
+        # 7. Adiciona o cálculo dos campos virtuais antes do retorno
+        hotel.min_price_general = self.calculate_min_price_general(hotel)
+        hotel.thumbnail = hotel.media[0].url if hotel.media else None 
 
         db.commit()
         db.refresh(hotel)
@@ -171,19 +300,38 @@ class HotelRepository:
         """
         return db.query(Hotel).all()
 
-    # -------------------- ROOMS --------------------
+# -------------------- ROOMS --------------------
     def add_rooms(self, db: Session, hotel_id: int, rooms_in: List[RoomIn]) -> Hotel:
         hotel = db.get(Hotel, hotel_id)
         if not hotel:
             raise ValueError("Hotel not found")
+        
         for r in rooms_in:
-            hotel.rooms.append(Room(
+            # 1. Cria o objeto Room
+            room = Room(
                 name=r.name,
                 room_type=r.room_type,
                 capacity=r.capacity,
                 base_price=r.base_price,
                 total_units=r.total_units,
-            ))
+            )
+            hotel.rooms.append(room) # Anexa ao hotel (já define hotel_id)
+
+            # --- Adiciona Amenities ao Quarto ---
+            room_amenity_ids = []
+            if r.amenities: 
+                # Adaptação para List[AmenityIn] ou List[int]
+                if hasattr(r.amenities[0], 'id'):
+                    room_amenity_ids = [a.id for a in r.amenities]
+                elif isinstance(r.amenities[0], int):
+                    room_amenity_ids = r.amenities
+            
+            # 2. Busca e anexa as Amenities ORM
+            if room_amenity_ids:
+                amenities = db.query(Amenity).filter(Amenity.id.in_(room_amenity_ids)).all()
+                room.amenities.extend(amenities)
+            # -----------------------------------------------
+
         db.commit()
         db.refresh(hotel)
         return hotel
@@ -227,7 +375,10 @@ class HotelRepository:
                 room_avail_subq, Hotel.id == room_avail_subq.c.hotel_id
             )
 
-        query = query.options(joinedload(Hotel.media), joinedload(Hotel.rooms))
+        query = query.options(
+            joinedload(Hotel.media), 
+            joinedload(Hotel.rooms).joinedload(Room.amenities) 
+        )
 
         # Filtros de texto e localização
         if filters.q:
@@ -303,7 +454,6 @@ class HotelRepository:
         ]
 
         if nearby_hotels:
-            # Aqui substituímos o ValueError por HTTPException
             raise HTTPException(
                 status_code=422,
                 detail=[{
